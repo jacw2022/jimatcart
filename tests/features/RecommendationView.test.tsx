@@ -82,6 +82,8 @@ describe("RecommendationView", () => {
         name: "Split between Lotus's and NSK to save RM0.50",
       }),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/Best value/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Step 2")).toBeInTheDocument();
 
     const lotusPlan = screen.getByRole("region", { name: "Lotus's" });
     const nskPlan = screen.getByRole("region", { name: "NSK" });
@@ -89,6 +91,8 @@ describe("RecommendationView", () => {
     expect(within(nskPlan).getByText("Milk")).toBeInTheDocument();
     expect(screen.getByText("Break-even extra-stop cost: RM1.00")).toBeInTheDocument();
     expect(screen.getByText("Net saving").nextElementSibling).toHaveTextContent("RM0.50");
+    expect(screen.getByRole("heading", { name: "Cost breakdown" }).closest("section"))
+      .toHaveClass("cost-breakdown");
   });
 
   it("explains when the extra stop makes splitting cost more", () => {
@@ -125,7 +129,11 @@ describe("RecommendationView", () => {
       ),
     );
 
-    expect(screen.getByText(/Same total, simpler trip/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "One shop costs the same — buy everything at NSK",
+      }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText(/prefers fewer stops/i)).toHaveLength(2);
     expect(screen.getByText(/at this exact amount/i)).toBeInTheDocument();
   });
@@ -142,7 +150,7 @@ describe("RecommendationView", () => {
       ),
     );
 
-    expect(screen.getByText(/Two stops required/)).toBeInTheDocument();
+    expect(screen.getByText(/No single shop has every item/i)).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Split between Lotus's and NSK" }),
     ).toBeInTheDocument();

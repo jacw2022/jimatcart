@@ -19,7 +19,6 @@ interface GroupedAssignments {
 }
 
 interface Headline {
-  eyebrow: string;
   title: string;
   summary: string;
   tone: "success" | "practical" | "unavoidable" | "error";
@@ -48,7 +47,6 @@ function getHeadline(
 ): Headline {
   if (recommendation.status === "no-valid-plan") {
     return {
-      eyebrow: "No complete plan",
       title: "This basket needs another price option",
       summary:
         recommendation.explanation[0] ??
@@ -64,7 +62,6 @@ function getHeadline(
 
   if (recommendation.bestSingleStoreTotalCents === null) {
     return {
-      eyebrow: "Two stops required",
       title: `Split between ${storeNames.join(" and ")}`,
       summary:
         "No single shop has every item, so this is the cheapest complete two-shop plan.",
@@ -78,7 +75,6 @@ function getHeadline(
     recommendation.netSavingCents > 0
   ) {
     return {
-      eyebrow: "Best value",
       title: `Split between ${storeNames.join(" and ")} to save ${formatRm(
         recommendation.netSavingCents,
       )}`,
@@ -94,7 +90,6 @@ function getHeadline(
     input.extraStopCostCents === recommendation.breakEvenExtraCostCents
   ) {
     return {
-      eyebrow: "Same total, simpler trip",
       title: `One shop costs the same — buy everything at ${storeNames[0]}`,
       summary:
         "The one- and two-shop plans cost the same, so JimatCart prefers fewer stops.",
@@ -111,7 +106,6 @@ function getHeadline(
       input.extraStopCostCents - recommendation.breakEvenExtraCostCents;
 
     return {
-      eyebrow: "One stop wins overall",
       title: `Buy everything at ${storeNames[0]} — splitting would cost ${formatRm(
         splitExtraCostCents,
       )} more`,
@@ -122,7 +116,6 @@ function getHeadline(
   }
 
   return {
-    eyebrow: "Cheapest complete plan",
     title: `Buy everything at ${storeNames[0]}`,
     summary: "One shop gives you the lowest complete total for this basket.",
     tone: "success",
@@ -221,7 +214,7 @@ export function RecommendationView({
         aria-label="Your smartest shop"
       >
         <div className="result-hero result-hero--error">
-          <p className="step-label">Step 2 · {headline.eyebrow}</p>
+          <p className="step-label">Step 2</p>
           <div>
             <h2 id="recommendation-heading">{headline.title}</h2>
             <p>{headline.summary}</p>
@@ -260,7 +253,7 @@ export function RecommendationView({
       aria-label="Your smartest shop"
     >
       <div className={`result-hero result-hero--${headline.tone}`}>
-        <p className="step-label">Step 2 · {headline.eyebrow}</p>
+        <p className="step-label">Step 2</p>
         <div>
           <h2 id="recommendation-heading">{headline.title}</h2>
           <p>{headline.summary}</p>
@@ -305,7 +298,9 @@ export function RecommendationView({
         </section>
 
         <section className="cost-breakdown" aria-labelledby="cost-breakdown-heading">
-          <h3 id="cost-breakdown-heading">Cost breakdown</h3>
+          <div className="cost-breakdown__heading">
+            <h3 id="cost-breakdown-heading">Cost breakdown</h3>
+          </div>
           <dl className="result-metrics">
             <Metric
               label="Groceries"
