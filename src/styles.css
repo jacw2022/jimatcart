@@ -91,7 +91,7 @@ textarea {
 }
 
 .site-header__content {
-  padding-block: 1.25rem 3.8rem;
+  padding-block: 1.25rem 3.4rem;
 }
 
 .brand {
@@ -117,9 +117,14 @@ textarea {
   letter-spacing: -0.03em;
 }
 
+.header-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding-top: 3.2rem;
+}
+
 .hero {
-  max-width: 720px;
-  padding-top: 3.4rem;
+  min-width: 0;
 }
 
 .step-label {
@@ -132,19 +137,19 @@ textarea {
 }
 
 .hero h1 {
-  max-width: 650px;
   margin: 0;
-  font-size: clamp(2.5rem, 7vw, 4.7rem);
+  font-size: clamp(2.7rem, 5vw, 4.5rem);
   line-height: 0.98;
   letter-spacing: -0.06em;
+  white-space: nowrap;
 }
 
 .hero__purpose {
-  max-width: 650px;
-  margin: 1.5rem 0 0;
+  margin: 1.35rem 0 0;
   color: #d8e8dd;
   font-size: clamp(1.05rem, 2vw, 1.25rem);
   line-height: 1.65;
+  white-space: nowrap;
 }
 
 .main-content {
@@ -1223,8 +1228,9 @@ input[aria-invalid="true"] {
     padding-bottom: 3.5rem;
   }
 
-  .hero {
-    padding-top: 3.5rem;
+  .header-hero-grid {
+    grid-template-columns: 1fr;
+    padding-top: 2.5rem;
   }
 
   .workspace-grid {
@@ -1353,7 +1359,12 @@ input[aria-invalid="true"] {
   }
 
   .hero h1 {
-    font-size: clamp(2.45rem, 15vw, 3.5rem);
+    font-size: clamp(1.85rem, 9vw, 2.35rem);
+  }
+
+  .hero__purpose {
+    margin-top: 0.9rem;
+    font-size: clamp(0.8rem, 3.8vw, 0.95rem);
   }
 
   .empty-state {

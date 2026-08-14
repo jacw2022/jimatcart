@@ -10,8 +10,11 @@ describe("JimatCart application shell", () => {
       screen.getByRole("heading", { level: 1, name: "Make every ringgit count." }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/whether a second stop is genuinely worth the extra trip/i),
+      screen.getByText("See if a second stop saves you money."),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "Interactive basket savings preview" }),
+    ).not.toBeInTheDocument();
   });
 
   it("provides labelled basket and recommendation regions", () => {

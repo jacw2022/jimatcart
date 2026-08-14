@@ -12,12 +12,11 @@ export function App() {
             <span>JimatCart</span>
           </a>
 
-          <div className="hero">
-            <h1>Make every ringgit count.</h1>
-            <p className="hero__purpose">
-              Compare your grocery basket across nearby shops and see whether a
-              second stop is genuinely worth the extra trip.
-            </p>
+          <div className="header-hero-grid">
+            <div className="hero">
+              <h1>Make every ringgit count.</h1>
+              <p className="hero__purpose">See if a second stop saves you money.</p>
+            </div>
           </div>
         </div>
       </header>
