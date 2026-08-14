@@ -33,8 +33,31 @@ describe("BasketWorkspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Compare my basket" }));
 
     expect(screen.getByRole("heading", { name: /split between/i })).toBeInTheDocument();
-    expect(screen.getByText("Saved on this device.")).toBeInTheDocument();
+    expect(screen.queryByText("Saved on this device.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Your recommendation is current.")).not.toBeInTheDocument();
     expect(screen.getByText(/additional petrol, fare, parking/i)).toBeInTheDocument();
+  });
+
+  it("keeps the native submitter enabled while the comparison is loading", () => {
+    render(<BasketWorkspace />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Compare my basket" }));
+
+    expect(screen.getByRole("button", { name: "Comparing basket" })).toBeEnabled();
+    expect(screen.getByRole("heading", { name: /split between/i })).toBeInTheDocument();
+  });
+
+  it("keeps shop headings inside their card and removes the grocery outer card", () => {
+    render(<BasketWorkspace />);
+
+    const shopHeading = screen.getByRole("heading", { name: "Shops to compare" });
+    expect(shopHeading.closest("fieldset")).toHaveClass("shop-editor");
+
+    const groceryHeading = screen.getByRole("heading", {
+      name: "Grocery items and prices",
+    });
+    expect(groceryHeading.closest("section")).toHaveClass("items-editor");
+    expect(groceryHeading.closest("section")).not.toHaveClass("editor-section");
   });
 
   it("adds, renames, and removes up to three shops", () => {

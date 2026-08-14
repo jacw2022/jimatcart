@@ -363,16 +363,18 @@ export function BasketWorkspace() {
           <p className="step-label">Step 1</p>
           <h2 id="basket-heading">Build your basket</h2>
           <p>
-            Add your groceries, quantities, and prices from up to three shops.
-            Blank prices mean an item is unavailable there.
+            Add groceries, quantities and up to three shop prices; leave
+            unavailable ones blank.
           </p>
         </div>
         <div className="workspace-tools">
-          <span className={`saved-note ${saveFailed ? "saved-note--warning" : ""}`}>
-            {saveFailed ? "Could not save on this device." : "Saved on this device."}
-          </span>
+          {saveFailed && (
+            <span className="saved-note saved-note--warning">
+              Could not save on this device.
+            </span>
+          )}
           <button
-            className="button button--text"
+            className="button button--reset"
             type="button"
             onClick={() => setShowResetConfirmation(true)}
           >
@@ -418,9 +420,12 @@ export function BasketWorkspace() {
       )}
 
       <fieldset className="editor-section shop-editor">
-        <legend>Shops to compare</legend>
+        <legend className="visually-hidden">Shops to compare</legend>
         <div className="editor-section__heading">
-          <p>Use clear shop names so the price columns are easy to follow.</p>
+          <div>
+            <h3>Shops to compare</h3>
+            <p>Use clear shop names so the price columns are easy to follow.</p>
+          </div>
           <button
             className="button button--secondary"
             type="button"
@@ -471,7 +476,7 @@ export function BasketWorkspace() {
                     />
                   </label>
                   <button
-                    className="button button--text button--danger"
+                    className="button button--text button--danger button--remove"
                     type="button"
                     aria-label={`Remove ${shopDisplayName(shop, index)}`}
                     onClick={() => removeShop(shop.id)}
@@ -489,7 +494,7 @@ export function BasketWorkspace() {
         )}
       </fieldset>
 
-      <section className="editor-section" aria-labelledby="items-heading">
+      <section className="items-editor" aria-labelledby="items-heading">
         <div className="editor-section__heading">
           <div>
             <h3 id="items-heading">Grocery items and prices</h3>
@@ -686,7 +691,7 @@ export function BasketWorkspace() {
                       })}
                       <td className="item-action-cell">
                         <button
-                          className="button button--text button--danger"
+                          className="button button--text button--danger button--remove"
                           type="button"
                           aria-label={`Remove ${itemDisplayName(item, itemIndex)}`}
                           onClick={() => removeItem(item.id)}
