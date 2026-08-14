@@ -719,15 +719,19 @@ input[aria-invalid="true"] {
   gap: 0.2rem;
 }
 
-.compare-action span {
+.compare-action > div > span {
   color: #cde2d3;
   font-size: 0.8rem;
 }
 
 .button--compare {
   flex: 0 0 auto;
+  min-width: 12.5rem;
+  border-color: #d6f8df;
   color: var(--green-950);
   background: #a9ebbc;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 20%);
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .button--compare:hover:not(:disabled) {
@@ -1404,5 +1408,9 @@ input[aria-invalid="true"] {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .button--compare {
+    transition: none;
   }
 }
