@@ -701,6 +701,23 @@ input[aria-invalid="true"] {
 
 .button--compare:hover:not(:disabled) {
   background: #c8f3d3;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 26%);
+  transform: translateY(-1px);
+}
+
+.stateful-button {
+  gap: 0.55rem;
+}
+
+.stateful-button[aria-busy="true"] {
+  cursor: wait;
+  opacity: 1;
+}
+
+.stateful-button__loader,
+.stateful-button__check {
+  flex: 0 0 auto;
+  height: 1.25rem;
 }
 
 .visually-hidden {

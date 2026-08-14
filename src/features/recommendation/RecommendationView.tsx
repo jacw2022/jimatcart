@@ -9,6 +9,7 @@ import type {
 interface RecommendationViewProps {
   input: BasketInput | null;
   recommendation: Recommendation | null;
+  revealRequest?: number;
 }
 
 interface GroupedAssignments {
@@ -144,9 +145,11 @@ function Metric({ label, value, emphasis = false }: {
 export function RecommendationView({
   input,
   recommendation,
+  revealRequest = 0,
 }: RecommendationViewProps) {
   const panelRef = useRef<HTMLElement>(null);
   const previouslyHadResult = useRef(Boolean(input && recommendation));
+  const previousRevealRequest = useRef(revealRequest);
   const headline = useMemo(
     () =>
       input && recommendation ? getHeadline(input, recommendation) : null,
@@ -162,13 +165,17 @@ export function RecommendationView({
 
   useEffect(() => {
     const hasResult = Boolean(input && recommendation);
+    const explicitlyRequested = revealRequest > previousRevealRequest.current;
 
-    if (hasResult && !previouslyHadResult.current) {
+    if (hasResult && explicitlyRequested) {
+      panelRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    } else if (hasResult && !previouslyHadResult.current) {
       panelRef.current?.scrollIntoView?.({ block: "start" });
     }
 
     previouslyHadResult.current = hasResult;
-  }, [input, recommendation]);
+    previousRevealRequest.current = revealRequest;
+  }, [input, recommendation, revealRequest]);
 
   if (!input || !recommendation || !headline) {
     return (

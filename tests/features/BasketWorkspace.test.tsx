@@ -22,11 +22,16 @@ describe("BasketWorkspace", () => {
     vi.restoreAllMocks();
   });
 
-  it("starts with a ready-to-edit Malaysian sample and recommendation", () => {
+  it("waits for Compare before calculating the sample basket recommendation", () => {
     render(<BasketWorkspace />);
 
     expect(screen.getByDisplayValue("Kedai Hijau")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Jasmine rice 5 kg")).toBeInTheDocument();
+    expect(screen.getByText("Step 2")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /split between/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Compare my basket" }));
+
     expect(screen.getByRole("heading", { name: /split between/i })).toBeInTheDocument();
     expect(screen.getByText("Saved on this device.")).toBeInTheDocument();
     expect(screen.getByText(/additional petrol, fare, parking/i)).toBeInTheDocument();
@@ -164,7 +169,7 @@ describe("BasketWorkspace", () => {
     expect(screen.getByText("Your basket has no items yet.")).toBeInTheDocument();
   });
 
-  it("requires comparison once, then recomputes immediately when valid input changes", () => {
+  it("requires another comparison after valid input changes", () => {
     render(<BasketWorkspace />);
 
     fireEvent.click(screen.getByRole("button", { name: "Reset basket" }));
@@ -198,6 +203,8 @@ describe("BasketWorkspace", () => {
     expect(screen.queryByRole("heading", { name: /split between/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Compare my basket" }));
 
+    expect(screen.getByRole("button", { name: "Comparing basket" })).toBeInTheDocument();
+
     expect(
       screen.getByRole("heading", {
         name: "Split between Lotus's and NSK to save RM1.00",
@@ -215,9 +222,33 @@ describe("BasketWorkspace", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
+        name: "Complete your basket to see a recommendation",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Compare my basket" }));
+
+    expect(
+      screen.getByRole("heading", {
         name: "Buy everything at NSK — splitting would cost RM0.50 more",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("reveals the recommendation whenever a valid basket is explicitly compared", () => {
+    const scrollIntoView = vi.fn();
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollIntoView;
+
+    render(<BasketWorkspace />);
+    fireEvent.click(screen.getByRole("button", { name: "Compare my basket" }));
+
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "start",
+    });
+
+    Element.prototype.scrollIntoView = originalScrollIntoView;
   });
 
   it("reveals blocking errors and focuses the first invalid field on compare", async () => {

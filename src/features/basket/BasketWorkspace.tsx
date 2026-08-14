@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, SetStateAction } from "react";
+import { StatefulButton } from "../../components/ui/StatefulButton";
 import {
   optimizeBasket,
   parseRmInput,
@@ -75,12 +76,12 @@ function getInitialWorkspace(): InitialWorkspace {
   const saved = loadWorkspace();
 
   if (saved.status === "restored") {
-    return { draft: saved.draft, hasCompared: saved.hasCompared };
+    return { draft: saved.draft, hasCompared: false };
   }
 
   return {
     draft: createSampleBasketDraft(),
-    hasCompared: true,
+    hasCompared: false,
     restoreNotice:
       saved.status === "invalid"
         ? "Saved basket data could not be restored, so the sample basket was loaded instead."
@@ -133,6 +134,7 @@ export function BasketWorkspace() {
   const [comparisonAttempted, setComparisonAttempted] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const [focusInvalidRequest, setFocusInvalidRequest] = useState(0);
+  const [recommendationRevealRequest, setRecommendationRevealRequest] = useState(0);
   const [touchedFields, setTouchedFields] = useState<Record<string, true>>({});
   const formRef = useRef<HTMLFormElement>(null);
   const draftResult = useMemo(() => toBasketInput(draft), [draft]);
@@ -143,6 +145,11 @@ export function BasketWorkspace() {
   );
   const errors = draftResult.errors;
   const errorCount = countErrors(errors);
+
+  function updateDraft(update: SetStateAction<BasketDraft>) {
+    setHasCompared(false);
+    setDraft(update);
+  }
 
   useEffect(() => {
     setSaveFailed(!saveWorkspace(draft, hasCompared));
@@ -172,7 +179,7 @@ export function BasketWorkspace() {
 
     const id = createId("shop");
 
-    setDraft((current) => ({
+    updateDraft((current) => ({
       ...current,
       shops: [...current.shops, { id, name: "" }],
       items: current.items.map((item) => ({
@@ -188,7 +195,7 @@ export function BasketWorkspace() {
   }
 
   function updateShopName(shopId: string, name: string) {
-    setDraft((current) => ({
+    updateDraft((current) => ({
       ...current,
       shops: current.shops.map((shop) =>
         shop.id === shopId ? { ...shop, name } : shop,
@@ -208,7 +215,7 @@ export function BasketWorkspace() {
       return;
     }
 
-    setDraft((current) => ({
+    updateDraft((current) => ({
       ...current,
       shops: current.shops.filter((shop) => shop.id !== shopId),
       items: current.items.map((item) => {
@@ -226,7 +233,7 @@ export function BasketWorkspace() {
 
     const id = createId("item");
 
-    setDraft((current) => ({
+    updateDraft((current) => ({
       ...current,
       items: [
         ...current.items,
@@ -245,7 +252,7 @@ export function BasketWorkspace() {
   }
 
   function updateItem(itemId: string, updates: Partial<EditableBasketItem>) {
-    setDraft((current) => ({
+    updateDraft((current) => ({
       ...current,
       items: current.items.map((item) =>
         item.id === itemId ? { ...item, ...updates } : item,
@@ -254,7 +261,7 @@ export function BasketWorkspace() {
   }
 
   function updatePrice(itemId: string, shopId: string, value: string) {
-    setDraft((current) => ({
+    updateDraft((current) => ({
       ...current,
       items: current.items.map((item) =>
         item.id === itemId
@@ -271,7 +278,7 @@ export function BasketWorkspace() {
   }
 
   function removeItem(itemId: string) {
-    setDraft((current) => ({
+    updateDraft((current) => ({
       ...current,
       items: current.items.filter((item) => item.id !== itemId),
     }));
@@ -297,7 +304,7 @@ export function BasketWorkspace() {
       validateExtraStopCostCents,
     );
     if (normalised !== null && normalised !== draft.extraStopCostInput) {
-      setDraft((current) => ({
+      updateDraft((current) => ({
         ...current,
         extraStopCostInput: normalised,
       }));
@@ -315,12 +322,12 @@ export function BasketWorkspace() {
     }
 
     setHasCompared(true);
+    setRecommendationRevealRequest((current) => current + 1);
   }
 
   function confirmReset() {
     const isEmpty = draft.shops.length === 0 && draft.items.length === 0;
-    setDraft(isEmpty ? createSampleBasketDraft() : createEmptyBasketDraft());
-    setHasCompared(isEmpty);
+    updateDraft(isEmpty ? createSampleBasketDraft() : createEmptyBasketDraft());
     setTouchedFields({});
     setComparisonAttempted(false);
     setShowResetConfirmation(false);
@@ -340,7 +347,7 @@ export function BasketWorkspace() {
       : draft.items.length === 0
         ? "Add at least one grocery item to build your comparison."
         : draftResult.ok && hasCompared
-          ? "Your recommendation is current."
+          ? null
           : draftResult.ok
             ? "Your basket is ready to compare."
             : comparisonAttempted
@@ -723,7 +730,7 @@ export function BasketWorkspace() {
                 errors.extraStopCost && isVisible("extra-stop-cost"),
               )}
               onChange={(event) =>
-                setDraft((current) => ({
+                updateDraft((current) => ({
                   ...current,
                   extraStopCostInput: event.target.value,
                 }))
@@ -742,14 +749,16 @@ export function BasketWorkspace() {
         </label>
       </section>
 
-      <div
-        className={`readiness ${draftResult.ok ? "readiness--ready" : ""}`}
-        role="status"
-        aria-live="polite"
-      >
-        <span className="readiness__dot" aria-hidden="true" />
-        <p>{readinessMessage}</p>
-      </div>
+      {readinessMessage && (
+        <div
+          className={`readiness ${draftResult.ok ? "readiness--ready" : ""}`}
+          role="status"
+          aria-live="polite"
+        >
+          <span className="readiness__dot" aria-hidden="true" />
+          <p>{readinessMessage}</p>
+        </div>
+      )}
 
       {comparisonAttempted && !draftResult.ok && (
         <div className="comparison-error-summary" role="alert">
@@ -763,15 +772,20 @@ export function BasketWorkspace() {
           <strong>Ready to check the real saving?</strong>
           <span>Blank price cells will be treated as unavailable.</span>
         </div>
-        <button className="button button--primary button--compare" type="submit">
+        <StatefulButton
+          className="button--primary button--compare"
+          resetSignal={draft}
+          type="submit"
+        >
           Compare my basket
-        </button>
+        </StatefulButton>
       </div>
       </section>
       </form>
       <RecommendationView
         input={hasCompared && draftResult.ok ? draftResult.input : null}
         recommendation={recommendation}
+        revealRequest={recommendationRevealRequest}
       />
     </Fragment>
   );
