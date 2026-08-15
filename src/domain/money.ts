@@ -5,7 +5,7 @@ export const ITEM_PRICE_RANGE = Object.freeze({
   maxCents: 999_999,
 });
 
-export const EXTRA_STOP_COST_RANGE = Object.freeze({
+export const TRIP_COST_RANGE = Object.freeze({
   minCents: 0,
   maxCents: 99_999,
 });
@@ -160,8 +160,8 @@ export function validateItemPriceCents(cents: MoneyCents): MoneyRangeResult {
   return validateMoneyRange(cents, ITEM_PRICE_RANGE);
 }
 
-export function validateExtraStopCostCents(cents: MoneyCents): MoneyRangeResult {
-  return validateMoneyRange(cents, EXTRA_STOP_COST_RANGE);
+export function validateTripCostCents(cents: MoneyCents): MoneyRangeResult {
+  return validateMoneyRange(cents, TRIP_COST_RANGE);
 }
 
 /**

@@ -12,10 +12,15 @@ export interface Store {
   name: string;
 }
 
+export interface TripCost {
+  storeIds: [string] | [string, string];
+  costCents: MoneyCents;
+}
+
 export interface BasketInput {
   items: BasketItem[];
   stores: Store[];
-  extraStopCostCents: MoneyCents;
+  tripCosts: TripCost[];
 }
 
 export interface PurchaseAssignment {
@@ -25,15 +30,23 @@ export interface PurchaseAssignment {
   lineTotalCents: MoneyCents;
 }
 
+export interface TwoStoreComparison {
+  storeIds: string[];
+  grocerySubtotalCents: MoneyCents;
+  travelCostCents: MoneyCents;
+  finalTotalCents: MoneyCents;
+}
+
 export interface Recommendation {
   status: "success" | "no-valid-plan";
   storesUsed: string[];
   assignments: PurchaseAssignment[];
   grocerySubtotalCents: MoneyCents;
-  extraStopCostCents: MoneyCents;
+  travelCostCents: MoneyCents;
   finalTotalCents: MoneyCents;
   bestSingleStoreTotalCents: MoneyCents | null;
   netSavingCents: MoneyCents | null;
-  breakEvenExtraCostCents: MoneyCents | null;
+  breakEvenTripCostCents: MoneyCents | null;
+  twoStoreComparison: TwoStoreComparison | null;
   explanation: string[];
 }

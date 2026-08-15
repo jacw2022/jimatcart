@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  EXTRA_STOP_COST_RANGE,
+  TRIP_COST_RANGE,
   ITEM_PRICE_RANGE,
   calculateLineTotalCents,
   formatRm,
   parseRmInput,
-  validateExtraStopCostCents,
+  validateTripCostCents,
   validateItemPriceCents,
   validateMoneyRange,
 } from "../../src/domain";
@@ -82,18 +82,18 @@ describe("field-specific money range validation", () => {
   });
 
   it.each([
-    EXTRA_STOP_COST_RANGE.minCents,
-    EXTRA_STOP_COST_RANGE.maxCents,
-  ])("accepts extra-stop boundary %i cents", (cents) => {
-    expect(validateExtraStopCostCents(cents)).toEqual({ ok: true, cents });
+    TRIP_COST_RANGE.minCents,
+    TRIP_COST_RANGE.maxCents,
+  ])("accepts trip-cost boundary %i cents", (cents) => {
+    expect(validateTripCostCents(cents)).toEqual({ ok: true, cents });
   });
 
-  it("rejects extra-stop costs outside RM0.00–RM999.99", () => {
-    expect(validateExtraStopCostCents(-1)).toMatchObject({
+  it("rejects trip costs outside RM0.00–RM999.99", () => {
+    expect(validateTripCostCents(-1)).toMatchObject({
       ok: false,
       error: { code: "below-minimum" },
     });
-    expect(validateExtraStopCostCents(100_000)).toMatchObject({
+    expect(validateTripCostCents(100_000)).toMatchObject({
       ok: false,
       error: { code: "above-maximum" },
     });
