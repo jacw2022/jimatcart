@@ -190,6 +190,7 @@ textarea {
   padding: 1.75rem 1.75rem 0;
 }
 
+.section-heading h1,
 .section-heading h2 {
   margin: 0;
   color: var(--green-950);
@@ -197,6 +198,11 @@ textarea {
   font-size: clamp(1.55rem, 3.5vw, 2rem);
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+.step-heading:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
 }
 
 .section-heading > p:last-child {
@@ -345,6 +351,7 @@ textarea {
   justify-content: flex-end;
 }
 
+.reset-confirmation h2,
 .reset-confirmation h3 {
   margin: 0 0 0.3rem;
   color: #741515;
@@ -377,7 +384,9 @@ fieldset.editor-section {
 }
 
 .editor-section legend,
+.editor-section h2,
 .editor-section h3,
+.items-editor h2,
 .items-editor h3 {
   margin: 0;
   padding: 0;
@@ -1016,6 +1025,7 @@ input[aria-invalid="true"]:focus-visible {
   max-width: none;
 }
 
+.trip-cost__heading h2,
 .trip-cost__heading h3 {
   margin: 0;
   color: var(--green-950);
@@ -1243,6 +1253,25 @@ input[aria-invalid="true"]:focus-visible {
   background: #fff0f0;
 }
 
+.comparison-error-summary strong {
+  display: block;
+}
+
+.comparison-error-summary ul {
+  margin: 0.45rem 0 0;
+  padding-left: 1.15rem;
+}
+
+.comparison-error-summary li {
+  margin: 0.2rem 0;
+}
+
+.comparison-error-summary a {
+  color: #741515;
+  font-weight: 650;
+  text-underline-offset: 2px;
+}
+
 .comparison-error-summary p {
   margin-top: 0.25rem;
   color: #7d2b2b;
@@ -1337,7 +1366,9 @@ input[aria-invalid="true"]:focus-visible {
   line-height: 1;
 }
 
+.empty-state h2,
 .empty-state h3,
+.recommendation-empty h2,
 .recommendation-empty h3 {
   margin: 0;
   color: var(--neutral-900);
@@ -1421,6 +1452,7 @@ input[aria-invalid="true"]:focus-visible {
   color: var(--error);
 }
 
+.result-hero h1,
 .result-hero h2 {
   max-width: 42ch;
   margin: 0;
@@ -1431,6 +1463,7 @@ input[aria-invalid="true"]:focus-visible {
   letter-spacing: -0.02em;
 }
 
+.result-hero--error h1,
 .result-hero--error h2 {
   color: #741515;
 }
@@ -1465,11 +1498,17 @@ input[aria-invalid="true"]:focus-visible {
   min-width: 0;
 }
 
+.purchase-plan h2,
 .purchase-plan h3,
+.cost-breakdown h2,
 .cost-breakdown h3,
+.cost-summary h2,
 .cost-summary h3,
+.why-this-plan h2,
 .why-this-plan h3,
+.result-assumptions h2,
 .result-assumptions h3,
+.no-plan-guidance h2,
 .no-plan-guidance h3 {
   margin: 0;
   color: var(--green-950);
@@ -1537,6 +1576,7 @@ input[aria-invalid="true"]:focus-visible {
   font-weight: 700;
 }
 
+.store-plan h3,
 .store-plan h4 {
   margin: 0;
   color: var(--green-950);
