@@ -249,7 +249,13 @@ export function RecommendationView({
 
   useEffect(() => {
     if (input && recommendation && revealRequest > previousReveal.current) {
-      panelRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      const reduce =
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      panelRef.current?.scrollIntoView?.({
+        behavior: reduce ? "auto" : "smooth",
+        block: "start",
+      });
     }
     previousReveal.current = revealRequest;
   }, [input, recommendation, revealRequest]);
