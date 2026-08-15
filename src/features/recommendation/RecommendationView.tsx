@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Ref } from "react";
 import { formatRm } from "../../domain";
 import type {
   BasketInput,
@@ -11,6 +12,7 @@ interface RecommendationViewProps {
   input: BasketInput | null;
   recommendation: Recommendation | null;
   revealRequest?: number;
+  headingRef?: Ref<HTMLHeadingElement>;
   onEditBasket?: () => void;
   onStartOver?: () => void;
 }
@@ -216,6 +218,7 @@ export function RecommendationView({
   input,
   recommendation,
   revealRequest = 0,
+  headingRef,
   onEditBasket,
   onStartOver,
 }: RecommendationViewProps) {
@@ -281,11 +284,18 @@ export function RecommendationView({
         {editToolbar}
         <aside ref={panelRef} className="panel panel--recommendation" aria-label="Your smartest shop">
           <div className="section-heading">
-            <h2>Your smartest shop</h2>
+            <h1
+              ref={headingRef}
+              id="results-heading"
+              className="step-heading"
+              tabIndex={-1}
+            >
+              Your smartest shop
+            </h1>
           </div>
           <div className="recommendation-empty">
             <span className="recommendation-empty__badge" aria-hidden="true">RM</span>
-            <h3>Complete your basket to see a recommendation</h3>
+            <h2>Complete your basket to see a recommendation</h2>
             <p>
               Add quantities, prices and every trip estimate,
               then compare the basket.
@@ -308,7 +318,14 @@ export function RecommendationView({
         >
           <div className="result-hero result-hero--error result-hero--compact">
             <div>
-              <h2>{resultHeadline.title}</h2>
+              <h1
+                ref={headingRef}
+                id="results-heading"
+                className="step-heading"
+                tabIndex={-1}
+              >
+                {resultHeadline.title}
+              </h1>
               <p>{resultHeadline.support}</p>
             </div>
             <p className="visually-hidden" role="status" aria-live="polite">
@@ -317,7 +334,7 @@ export function RecommendationView({
           </div>
           <div className="result-content result-content--compact">
             <div className="no-plan-guidance">
-              <h3>How to make a complete plan</h3>
+              <h2>How to make a complete plan</h2>
               <p>Add a valid price for the affected item at one of the selected shops.</p>
             </div>
             <Assumptions />
@@ -345,7 +362,14 @@ export function RecommendationView({
           className={`result-hero result-hero--${resultHeadline.tone} result-hero--celebrate result-hero--compact`}
         >
           <div>
-            <h2>{resultHeadline.title}</h2>
+            <h1
+              ref={headingRef}
+              id="results-heading"
+              className="step-heading"
+              tabIndex={-1}
+            >
+              {resultHeadline.title}
+            </h1>
             <p className="result-hero__support">{resultHeadline.support}</p>
           </div>
           <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
@@ -409,7 +433,7 @@ export function RecommendationView({
 
           <section className="purchase-plan" aria-labelledby="purchase-plan-heading">
             <div className="result-section-heading">
-              <h3 id="purchase-plan-heading">What to buy where</h3>
+              <h2 id="purchase-plan-heading">What to buy where</h2>
               <p>{recommendation.storesUsed.length}-shop plan</p>
             </div>
             <div className="store-plan-list">
@@ -420,7 +444,7 @@ export function RecommendationView({
                   key={group.storeId}
                 >
                   <div className="store-plan__heading">
-                    <h4 id={`store-${group.storeId}`}>{group.storeName}</h4>
+                    <h3 id={`store-${group.storeId}`}>{group.storeName}</h3>
                     <span className="store-plan__count">
                       {group.assignments.length} item
                       {group.assignments.length === 1 ? "" : "s"}
@@ -446,7 +470,7 @@ export function RecommendationView({
 
           {reasons.length > 0 && (
             <section className="why-this-plan why-this-plan--compact" aria-labelledby="why-heading">
-              <h3 id="why-heading">Why this plan won</h3>
+              <h2 id="why-heading">Why this plan won</h2>
               <ul>
                 {reasons.map((line) => (
                   <li key={line}>{line}</li>
