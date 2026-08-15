@@ -722,6 +722,28 @@ input[aria-invalid="true"]:focus-visible {
   line-height: 1.35;
 }
 
+.field-error--with-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.65rem;
+}
+
+.field-error__action {
+  margin: 0;
+  padding: 0;
+  min-block-size: auto;
+  color: var(--error);
+  font-size: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.field-error__action:hover:not(:disabled) {
+  color: #5c1010;
+}
+
 .limit-note {
   margin: 0.75rem 0 0;
   color: var(--neutral-500);

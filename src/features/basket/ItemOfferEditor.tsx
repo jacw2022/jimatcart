@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { formatRm, ITEM_PRICE_RANGE } from "../../domain";
 import type {
   BasketDraftErrors,
   EditableBasketItem,
@@ -9,7 +10,9 @@ interface ItemOfferEditorProps {
   items: EditableBasketItem[];
   shops: EditableShop[];
   errors: BasketDraftErrors;
-  showErrors: boolean;
+  showAllErrors: boolean;
+  shouldShowFieldError: (fieldId: string) => boolean;
+  onFieldTouched: (fieldId: string) => void;
   onAdd: () => void;
   onRemove: (itemId: string) => void;
   onItemChange: (
@@ -36,7 +39,9 @@ function GroceryNameField({
   itemName,
   error,
   availabilityError,
+  onRemoveUnavailable,
   onItemChange,
+  onFieldTouched,
   autoEdit,
 }: {
   item: EditableBasketItem;
@@ -44,7 +49,9 @@ function GroceryNameField({
   itemName: string;
   error?: string;
   availabilityError?: string;
+  onRemoveUnavailable?: () => void;
   onItemChange: ItemOfferEditorProps["onItemChange"];
+  onFieldTouched: (fieldId: string) => void;
   autoEdit: boolean;
 }) {
   const [editing, setEditing] = useState(autoEdit || !item.name.trim());
@@ -60,6 +67,21 @@ function GroceryNameField({
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
+
+  const availabilityBlock = availabilityError && (
+    <span className="field-error field-error--with-action" id={availId}>
+      <span>{availabilityError}</span>
+      {onRemoveUnavailable && (
+        <button
+          type="button"
+          className="button button--text field-error__action"
+          onClick={onRemoveUnavailable}
+        >
+          Remove this item
+        </button>
+      )}
+    </span>
+  );
 
   if (!editing) {
     return (
@@ -80,11 +102,7 @@ function GroceryNameField({
             {error}
           </span>
         )}
-        {availabilityError && (
-          <span className="field-error" id={availId}>
-            {availabilityError}
-          </span>
-        )}
+        {availabilityBlock}
       </div>
     );
   }
@@ -105,6 +123,7 @@ function GroceryNameField({
           onItemChange(item.id, { name: event.target.value })
         }
         onBlur={() => {
+          onFieldTouched(nameId);
           if (item.name.trim()) setEditing(false);
         }}
         onKeyDown={(event) => {
@@ -123,11 +142,7 @@ function GroceryNameField({
           {error}
         </span>
       )}
-      {availabilityError && (
-        <span className="field-error" id={availId}>
-          {availabilityError}
-        </span>
-      )}
+      {availabilityBlock}
     </label>
   );
 }
@@ -139,10 +154,11 @@ function ShopPriceField({
   shops,
   priceError,
   availabilityError,
-  showErrors,
+  showAvailError,
   onPriceChange,
   onUnavailableChange,
   onPriceBlur,
+  onFieldTouched,
 }: {
   item: EditableBasketItem;
   itemName: string;
@@ -150,10 +166,11 @@ function ShopPriceField({
   shops: EditableShop[];
   priceError?: string;
   availabilityError?: string;
-  showErrors: boolean;
+  showAvailError: boolean;
   onPriceChange: ItemOfferEditorProps["onPriceChange"];
   onUnavailableChange: ItemOfferEditorProps["onUnavailableChange"];
   onPriceBlur: ItemOfferEditorProps["onPriceBlur"];
+  onFieldTouched: (fieldId: string) => void;
 }) {
   const shopName = shop.name.trim() || "Unnamed shop";
   const priceValue = item.priceInputsByStoreId[shop.id] ?? "";
@@ -165,7 +182,7 @@ function ShopPriceField({
   const priceInputRef = useRef<HTMLInputElement>(null);
   const isLeadAvailabilityTarget = shop.id === shops[0]?.id;
   const showAvailOnToggle = Boolean(
-    showErrors && availabilityError && isLeadAvailabilityTarget,
+    showAvailError && availabilityError && isLeadAvailabilityTarget,
   );
 
   return (
@@ -190,7 +207,10 @@ function ShopPriceField({
             onChange={(event) =>
               onPriceChange(item.id, shop.id, event.target.value)
             }
-            onBlur={() => onPriceBlur(item.id, shop.id)}
+            onBlur={() => {
+              onFieldTouched(priceId);
+              onPriceBlur(item.id, shop.id);
+            }}
           />
         </label>
         <label className="unavailable-toggle" htmlFor={unavailableId}>
@@ -201,6 +221,7 @@ function ShopPriceField({
             aria-invalid={showAvailOnToggle}
             aria-describedby={showAvailOnToggle ? availId : undefined}
             onChange={(event) => {
+              onFieldTouched(`${item.id}-avail`);
               if (event.target.checked) {
                 onUnavailableChange(item.id, shop.id, true);
                 return;
@@ -225,7 +246,9 @@ export function ItemOfferEditor({
   items,
   shops,
   errors,
-  showErrors,
+  showAllErrors,
+  shouldShowFieldError,
+  onFieldTouched,
   onAdd,
   onRemove,
   onItemChange,
@@ -234,6 +257,7 @@ export function ItemOfferEditor({
   onPriceBlur,
 }: ItemOfferEditorProps) {
   const canAdd = shops.length > 0 && items.length < 50;
+  const priceRangeHint = `Unit prices from ${formatRm(ITEM_PRICE_RANGE.minCents)} to ${formatRm(ITEM_PRICE_RANGE.maxCents)}.`;
 
   return (
     <section className="items-editor" aria-labelledby="item-editor-heading">
@@ -243,7 +267,7 @@ export function ItemOfferEditor({
           <p>
             Enter quantity and unit price at each shop. Leave a price blank only
             while you still need to type it — mark Unavailable when that shop
-            does not sell the item.
+            does not sell the item. {priceRangeHint}
           </p>
         </div>
       </div>
@@ -288,15 +312,21 @@ export function ItemOfferEditor({
             <tbody>
               {items.map((item, itemIndex) => {
                 const itemName = item.name.trim() || `Item ${itemIndex + 1}`;
-                const itemNameError = showErrors
+                const itemNameError = shouldShowFieldError(`${item.id}-name`)
                   ? errors.itemNames[item.id]
                   : undefined;
-                const quantityError = showErrors
+                const quantityError = shouldShowFieldError(`${item.id}-qty`)
                   ? errors.quantities[item.id]
                   : undefined;
-                const availabilityError = showErrors
-                  ? errors.availability[item.id]
-                  : undefined;
+                const allUnavailable =
+                  shops.length > 0 &&
+                  shops.every((shop) =>
+                    Boolean(item.unavailableByStoreId?.[shop.id]),
+                  );
+                const availabilityError =
+                  showAllErrors || shouldShowFieldError(`${item.id}-avail`)
+                    ? errors.availability[item.id]
+                    : undefined;
                 const qtyId = `${item.id}-qty`;
                 const qtyErrorId = `${item.id}-qty-error`;
                 return (
@@ -308,7 +338,13 @@ export function ItemOfferEditor({
                         itemName={itemName}
                         error={itemNameError}
                         availabilityError={availabilityError}
+                        onRemoveUnavailable={
+                          allUnavailable && availabilityError
+                            ? () => onRemove(item.id)
+                            : undefined
+                        }
                         onItemChange={onItemChange}
+                        onFieldTouched={onFieldTouched}
                         autoEdit={!item.name.trim()}
                       />
                     </th>
@@ -331,6 +367,7 @@ export function ItemOfferEditor({
                               quantityInput: event.target.value,
                             })
                           }
+                          onBlur={() => onFieldTouched(qtyId)}
                         />
                         {quantityError && (
                           <span className="field-error" id={qtyErrorId}>
@@ -347,15 +384,18 @@ export function ItemOfferEditor({
                           shop={shop}
                           shops={shops}
                           priceError={
-                            showErrors
+                            shouldShowFieldError(
+                              `${item.id}-price-${shop.id}`,
+                            )
                               ? errors.prices[item.id]?.[shop.id]
                               : undefined
                           }
                           availabilityError={availabilityError}
-                          showErrors={showErrors}
+                          showAvailError={Boolean(availabilityError)}
                           onPriceChange={onPriceChange}
                           onUnavailableChange={onUnavailableChange}
                           onPriceBlur={onPriceBlur}
+                          onFieldTouched={onFieldTouched}
                         />
                       </td>
                     ))}

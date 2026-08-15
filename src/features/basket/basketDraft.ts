@@ -186,7 +186,15 @@ export function toBasketInput(draft: BasketDraft): BasketDraftResult {
       pricesByStoreId[shop.id] = ranged.cents;
       hasValidPrice = true;
     }
-    if (draft.shops.length > 0 && !hasEnteredPrice) {
+    const itemLabel = item.name.trim() || "this item";
+    const allUnavailable =
+      draft.shops.length > 0 &&
+      draft.shops.every((shop) => Boolean(item.unavailableByStoreId?.[shop.id]));
+
+    if (allUnavailable) {
+      errors.availability[item.id] =
+        `No selected shop stocks ${itemLabel}. Untick a shop and add a price, or remove this item from the basket.`;
+    } else if (draft.shops.length > 0 && !hasEnteredPrice) {
       errors.availability[item.id] =
         "Enter a price at one or more shops, or mark others Unavailable.";
     } else if (hasEnteredPrice && !hasValidPrice) {
