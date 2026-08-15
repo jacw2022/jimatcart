@@ -51,6 +51,8 @@ export function WizardProgress({
   onJump,
   maxReachable,
 }: WizardProgressProps) {
+  const total = WIZARD_STEPS.length;
+
   return (
     <nav className="wizard-progress" aria-label="Basket comparison steps">
       <ol className="wizard-progress__list">
@@ -85,9 +87,14 @@ export function WizardProgress({
                   <span className="wizard-progress__label">{step.label}</span>
                 </button>
               ) : (
-                <span className="wizard-progress__static" aria-label={label}>
+                <span className="wizard-progress__static">
                   <StepGlyph index={index} complete={isComplete} current={isCurrent} />
                   <span className="wizard-progress__label">{step.label}</span>
+                  {isCurrent && (
+                    <span className="visually-hidden">
+                      , current step, {index + 1} of {total}
+                    </span>
+                  )}
                 </span>
               )}
             </li>
