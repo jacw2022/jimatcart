@@ -21,7 +21,6 @@ export function InteractiveBasket() {
   const mintFace = `${uid}-mintFace`;
   const softShadow = `${uid}-softShadow`;
   const smallShadow = `${uid}-smallShadow`;
-  const titleId = `${uid}-optimizer-title`;
   const descId = `${uid}-optimizer-description`;
 
   useEffect(() => {
@@ -66,9 +65,9 @@ export function InteractiveBasket() {
         className="optimizer-art"
         viewBox="0 0 620 620"
         role="img"
-        aria-labelledby={`${titleId} ${descId}`}
+        aria-label="Interactive grocery route comparison"
+        aria-describedby={descId}
       >
-        <title id={titleId}>Interactive grocery route comparison</title>
         <desc id={descId}>
           Choose between one shop and a two-shop split. The routes animate and
           the basket shows the selected savings plan.
