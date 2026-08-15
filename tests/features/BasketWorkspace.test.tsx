@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BasketWorkspace } from "../../src/features/basket/BasketWorkspace";
 import { BASKET_STORAGE_KEY } from "../../src/storage/basketStorage";
 
@@ -26,6 +26,10 @@ describe("BasketWorkspace", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("loads a clearly identified basic example", () => {
@@ -102,6 +106,31 @@ describe("BasketWorkspace", () => {
       expect(stored.version).toBe(4);
       expect(stored.draft.items[0].quantityInput).toBe("5");
       expect(raw).not.toMatch(/recommendation/i);
+    });
+  });
+
+  it("debounces localStorage writes across rapid keystrokes", async () => {
+    render(<BasketWorkspace />);
+    goToItems();
+    await waitFor(() => {
+      expect(localStorage.getItem(BASKET_STORAGE_KEY)).not.toBeNull();
+    });
+
+    const quantity = screen.getByLabelText("Jasmine rice quantity");
+    for (const value of ["2", "23", "234"]) {
+      fireEvent.change(quantity, { target: { value } });
+    }
+
+    expect(
+      JSON.parse(localStorage.getItem(BASKET_STORAGE_KEY)!).draft.items[0]
+        .quantityInput,
+    ).toBe("1");
+
+    await waitFor(() => {
+      expect(
+        JSON.parse(localStorage.getItem(BASKET_STORAGE_KEY)!).draft.items[0]
+          .quantityInput,
+      ).toBe("234");
     });
   });
 
