@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef, useState } from "react";
 import type {
   BasketDraftErrors,
   EditableBasketItem,
@@ -16,7 +17,168 @@ interface ItemOfferEditorProps {
     updates: Partial<EditableBasketItem>,
   ) => void;
   onPriceChange: (itemId: string, shopId: string, value: string) => void;
+  onUnavailableChange: (
+    itemId: string,
+    shopId: string,
+    unavailable: boolean,
+  ) => void;
   onPriceBlur: (itemId: string, shopId: string) => void;
+}
+
+function GroceryNameField({
+  item,
+  itemIndex,
+  itemName,
+  error,
+  availabilityError,
+  onItemChange,
+  autoEdit,
+}: {
+  item: EditableBasketItem;
+  itemIndex: number;
+  itemName: string;
+  error?: string;
+  availabilityError?: string;
+  onItemChange: ItemOfferEditorProps["onItemChange"];
+  autoEdit: boolean;
+}) {
+  const [editing, setEditing] = useState(autoEdit || !item.name.trim());
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  if (!editing) {
+    return (
+      <div className="grocery-name">
+        <button
+          type="button"
+          className="grocery-name__display"
+          onClick={() => setEditing(true)}
+          aria-label={`Edit name for ${itemName}`}
+        >
+          {itemName}
+        </button>
+        {error && <span className="field-error">{error}</span>}
+        {availabilityError && (
+          <span className="field-error">{availabilityError}</span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <label className="table-field grocery-name grocery-name--editing">
+      <span className="mobile-field-label">Item name</span>
+      <input
+        ref={inputRef}
+        type="text"
+        value={item.name}
+        placeholder="e.g. Jasmine rice"
+        aria-label={`Item ${itemIndex + 1} name`}
+        aria-invalid={Boolean(error)}
+        onChange={(event) =>
+          onItemChange(item.id, { name: event.target.value })
+        }
+        onBlur={() => {
+          if (item.name.trim()) setEditing(false);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            (event.target as HTMLInputElement).blur();
+          }
+          if (event.key === "Escape") {
+            event.preventDefault();
+            if (item.name.trim()) setEditing(false);
+          }
+        }}
+      />
+      {error && <span className="field-error">{error}</span>}
+      {availabilityError && (
+        <span className="field-error">{availabilityError}</span>
+      )}
+    </label>
+  );
+}
+
+function ShopPriceField({
+  item,
+  itemName,
+  shop,
+  shops,
+  priceError,
+  availabilityError,
+  showErrors,
+  onPriceChange,
+  onUnavailableChange,
+  onPriceBlur,
+}: {
+  item: EditableBasketItem;
+  itemName: string;
+  shop: EditableShop;
+  shops: EditableShop[];
+  priceError?: string;
+  availabilityError?: string;
+  showErrors: boolean;
+  onPriceChange: ItemOfferEditorProps["onPriceChange"];
+  onUnavailableChange: ItemOfferEditorProps["onUnavailableChange"];
+  onPriceBlur: ItemOfferEditorProps["onPriceBlur"];
+}) {
+  const shopName = shop.name.trim() || "Unnamed shop";
+  const priceValue = item.priceInputsByStoreId[shop.id] ?? "";
+  const unavailable = Boolean(item.unavailableByStoreId?.[shop.id]);
+  const unavailableId = useId();
+  const priceInputRef = useRef<HTMLInputElement>(null);
+  const isLeadAvailabilityTarget = shop.id === shops[0]?.id;
+
+  return (
+    <div className="shop-price">
+      <span className="mobile-field-label">{shopName}</span>
+      <div className="shop-price__controls">
+        <label
+          className={`money-input ${unavailable ? "money-input--unavailable" : ""}`}
+        >
+          <span aria-hidden="true">RM</span>
+          <input
+            ref={priceInputRef}
+            type="text"
+            inputMode="decimal"
+            value={unavailable ? "" : priceValue}
+            placeholder="0.00"
+            disabled={unavailable}
+            aria-label={`${itemName} price at ${shopName}`}
+            aria-invalid={Boolean(priceError)}
+            onChange={(event) =>
+              onPriceChange(item.id, shop.id, event.target.value)
+            }
+            onBlur={() => onPriceBlur(item.id, shop.id)}
+          />
+        </label>
+        <label className="unavailable-toggle" htmlFor={unavailableId}>
+          <input
+            id={unavailableId}
+            type="checkbox"
+            checked={unavailable}
+            aria-invalid={Boolean(
+              showErrors && availabilityError && isLeadAvailabilityTarget,
+            )}
+            onChange={(event) => {
+              if (event.target.checked) {
+                onUnavailableChange(item.id, shop.id, true);
+                return;
+              }
+              onUnavailableChange(item.id, shop.id, false);
+              queueMicrotask(() => priceInputRef.current?.focus());
+            }}
+          />
+          <span>Unavailable</span>
+        </label>
+      </div>
+      {priceError && <span className="field-error">{priceError}</span>}
+    </div>
+  );
 }
 
 export function ItemOfferEditor({
@@ -28,26 +190,22 @@ export function ItemOfferEditor({
   onRemove,
   onItemChange,
   onPriceChange,
+  onUnavailableChange,
   onPriceBlur,
 }: ItemOfferEditorProps) {
+  const canAdd = shops.length > 0 && items.length < 50;
+
   return (
-    <section className="items-editor" aria-labelledby="items-heading">
-      <div className="editor-section__heading">
+    <section className="items-editor" aria-labelledby="item-editor-heading">
+      <div className="editor-section__heading editor-section__heading--items">
         <div>
-          <h3 id="items-heading">Groceries and prices</h3>
+          <h3 id="item-editor-heading">Groceries and prices</h3>
           <p>
-            Enter the quantity and unit price at each shop. Leave a price blank
-            when an item is unavailable there.
+            Enter quantity and unit price at each shop. Leave a price blank only
+            while you still need to type it — mark Unavailable when that shop
+            does not sell the item.
           </p>
         </div>
-        <button
-          className="button button--secondary"
-          type="button"
-          onClick={onAdd}
-          disabled={shops.length === 0 || items.length >= 50}
-        >
-          Add item
-        </button>
       </div>
 
       {items.length === 0 ? (
@@ -64,13 +222,13 @@ export function ItemOfferEditor({
               onClick={onAdd}
               data-empty-action="true"
             >
-              Add your first item
+              + Add your first item
             </button>
           )}
         </div>
       ) : (
-        <div className="comparison-table-wrap basic-price-table-wrap">
-          <table className="comparison-table basic-price-table">
+        <div className="comparison-table-wrap basic-price-table-wrap items-table-wrap">
+          <table className="comparison-table basic-price-table items-table">
             <caption>Grocery quantities and unit prices at each shop</caption>
             <thead>
               <tr>
@@ -82,7 +240,9 @@ export function ItemOfferEditor({
                     <span className="column-unit">Unit price (RM)</span>
                   </th>
                 ))}
-                <th scope="col">Action</th>
+                <th scope="col">
+                  <span className="visually-hidden">Action</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -100,25 +260,15 @@ export function ItemOfferEditor({
                 return (
                   <tr className="item-row basic-item-row" key={item.id}>
                     <th scope="row">
-                      <label className="table-field">
-                        <span className="mobile-field-label">Item name</span>
-                        <input
-                          type="text"
-                          value={item.name}
-                          placeholder="e.g. Jasmine rice"
-                          aria-label={`Item ${itemIndex + 1} name`}
-                          aria-invalid={Boolean(itemNameError)}
-                          onChange={(event) =>
-                            onItemChange(item.id, { name: event.target.value })
-                          }
-                        />
-                        {itemNameError && (
-                          <span className="field-error">{itemNameError}</span>
-                        )}
-                        {availabilityError && (
-                          <span className="field-error">{availabilityError}</span>
-                        )}
-                      </label>
+                      <GroceryNameField
+                        item={item}
+                        itemIndex={itemIndex}
+                        itemName={itemName}
+                        error={itemNameError}
+                        availabilityError={availabilityError}
+                        onItemChange={onItemChange}
+                        autoEdit={!item.name.trim()}
+                      />
                     </th>
                     <td>
                       <label className="table-field">
@@ -141,50 +291,32 @@ export function ItemOfferEditor({
                         )}
                       </label>
                     </td>
-                    {shops.map((shop) => {
-                      const shopName = shop.name.trim() || "Unnamed shop";
-                      const priceError = showErrors
-                        ? errors.prices[item.id]?.[shop.id]
-                        : undefined;
-                      return (
-                        <td key={shop.id}>
-                          <span className="mobile-field-label">{shopName}</span>
-                          <label className="table-field">
-                            <span className="field-label">Unit price</span>
-                            <span className="money-input">
-                              <span aria-hidden="true">RM</span>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={item.priceInputsByStoreId[shop.id] ?? ""}
-                                placeholder="Leave blank"
-                                aria-label={`${itemName} price at ${shopName}`}
-                                aria-invalid={Boolean(
-                                  priceError ||
-                                    (availabilityError && shop.id === shops[0]?.id),
-                                )}
-                                onChange={(event) =>
-                                  onPriceChange(
-                                    item.id,
-                                    shop.id,
-                                    event.target.value,
-                                  )
-                                }
-                                onBlur={() => onPriceBlur(item.id, shop.id)}
-                              />
-                            </span>
-                            {priceError && (
-                              <span className="field-error">{priceError}</span>
-                            )}
-                          </label>
-                        </td>
-                      );
-                    })}
+                    {shops.map((shop) => (
+                      <td key={shop.id}>
+                        <ShopPriceField
+                          item={item}
+                          itemName={itemName}
+                          shop={shop}
+                          shops={shops}
+                          priceError={
+                            showErrors
+                              ? errors.prices[item.id]?.[shop.id]
+                              : undefined
+                          }
+                          availabilityError={availabilityError}
+                          showErrors={showErrors}
+                          onPriceChange={onPriceChange}
+                          onUnavailableChange={onUnavailableChange}
+                          onPriceBlur={onPriceBlur}
+                        />
+                      </td>
+                    ))}
                     <td className="item-action-cell">
                       <button
-                        className="button button--danger"
+                        className="button button--danger button--remove button--remove-item"
                         type="button"
                         onClick={() => onRemove(item.id)}
+                        aria-label={`Remove ${itemName}`}
                       >
                         Remove
                       </button>
@@ -196,6 +328,20 @@ export function ItemOfferEditor({
           </table>
         </div>
       )}
+
+      {items.length > 0 && (
+        <div className="items-add-row">
+          <button
+            className="button button--add-item"
+            type="button"
+            onClick={onAdd}
+            disabled={!canAdd}
+          >
+            + Add item
+          </button>
+        </div>
+      )}
+
       {items.length >= 50 && (
         <p className="limit-note">Maximum of 50 items reached.</p>
       )}
