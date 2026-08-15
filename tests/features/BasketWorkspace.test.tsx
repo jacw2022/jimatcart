@@ -122,9 +122,29 @@ describe("BasketWorkspace", () => {
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("heading", { name: "Remove this shop?" })).toBeInTheDocument();
     expect(within(dialog).getByText(/discards/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/trip cost/i)).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByDisplayValue("Kedai Hijau")).toBeInTheDocument();
+  });
+
+  it("warns about trip costs when removing a shop with no prices left", () => {
+    render(<BasketWorkspace />);
+    goToItems();
+    for (const name of [
+      "Jasmine rice",
+      "Cooking oil",
+      "Grade B eggs",
+      "Fresh milk",
+    ]) {
+      fireEvent.click(screen.getByRole("button", { name: `Remove ${name}` }));
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Kedai Hijau" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/trip cost/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/discards/i)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/\d+ prices?/i)).not.toBeInTheDocument();
   });
 
   it("walks through each wizard step to results", async () => {
