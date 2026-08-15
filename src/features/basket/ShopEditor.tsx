@@ -18,10 +18,10 @@ export function ShopEditor({
   onRemove,
 }: ShopEditorProps) {
   return (
-    <section className="editor-section" aria-labelledby="shops-heading">
+    <section className="editor-section" aria-labelledby="shop-editor-heading">
       <div className="editor-section__heading">
         <div>
-          <h3 id="shops-heading">Shops to compare</h3>
+          <h3 id="shop-editor-heading">Shops to compare</h3>
           <p>Add up to three familiar shops.</p>
         </div>
         <button
@@ -74,7 +74,7 @@ export function ShopEditor({
                   )}
                 </label>
                 <button
-                  className="button button--danger"
+                  className="button button--danger button--remove"
                   type="button"
                   onClick={() => onRemove(shop.id)}
                 >
