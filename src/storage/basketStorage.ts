@@ -70,6 +70,13 @@ function isValidDraft(value: unknown): value is BasketDraft {
     ) {
       return false;
     }
+
+    if (item.unavailableByStoreId !== undefined) {
+      if (!isRecord(item.unavailableByStoreId)) return false;
+      for (const [shopId, flag] of Object.entries(item.unavailableByStoreId)) {
+        if (!shopIds.has(shopId) || typeof flag !== "boolean") return false;
+      }
+    }
   }
 
   const expectedPlans = new Set<string>();
@@ -114,6 +121,26 @@ function browserStorage(): Storage | null {
   }
 }
 
+function normalizeDraft(draft: BasketDraft): BasketDraft {
+  return {
+    ...draft,
+    items: draft.items.map((item) => {
+      const rawFlags = (item as { unavailableByStoreId?: unknown })
+        .unavailableByStoreId;
+      return {
+        ...item,
+        unavailableByStoreId: isRecord(rawFlags)
+          ? Object.fromEntries(
+              Object.entries(rawFlags).filter(
+                (entry): entry is [string, true] => entry[1] === true,
+              ),
+            )
+          : {},
+      };
+    }),
+  };
+}
+
 export function loadWorkspace(storage = browserStorage()): LoadWorkspaceResult {
   if (!storage) return { status: "missing" };
   try {
@@ -130,7 +157,7 @@ export function loadWorkspace(storage = browserStorage()): LoadWorkspaceResult {
     }
     return {
       status: "restored",
-      draft: structuredClone(parsed.draft),
+      draft: normalizeDraft(structuredClone(parsed.draft)),
       hasCompared: parsed.hasCompared,
     };
   } catch {
