@@ -11,12 +11,20 @@ interface RecommendationViewProps {
   input: BasketInput | null;
   recommendation: Recommendation | null;
   revealRequest?: number;
+  onEditBasket?: () => void;
+  onStartOver?: () => void;
 }
 
 interface AssignmentGroup {
   storeId: string;
   storeName: string;
   assignments: PurchaseAssignment[];
+}
+
+interface ResultHeadline {
+  title: string;
+  support: string;
+  tone: "success" | "practical" | "error";
 }
 
 type ExportStatus = { tone: "success" | "error"; message: string } | null;
@@ -35,34 +43,48 @@ function groupAssignments(
   }));
 }
 
-function headline(input: BasketInput, recommendation: Recommendation) {
+function optionLabel(names: string[]): string {
+  return names.join(" + ");
+}
+
+function headline(input: BasketInput, recommendation: Recommendation): ResultHeadline {
   if (recommendation.status === "no-valid-plan") {
     return {
-      title: "No complete two-shop plan yet",
-      summary: recommendation.explanation[0],
+      title: "No complete plan yet",
+      support: recommendation.explanation[0] ?? "Add missing prices to continue.",
       tone: "error",
-    } as const;
+    };
   }
 
   const names = recommendation.storesUsed.map(
     (id) => input.stores.find((store) => store.id === id)?.name ?? "Unknown shop",
   );
+  const label = optionLabel(names);
+
   if (recommendation.storesUsed.length === 2) {
     if (recommendation.bestSingleStoreTotalCents === null) {
       return {
-        title: `Split between ${names.join(" and ")}`,
-        summary: "No single shop has a price for every item.",
+        title: `Lowest-cost option: ${label}`,
+        support: "No single shop has a price for every item.",
         tone: "practical",
-      } as const;
+      };
+    }
+    const saving = recommendation.netSavingCents ?? 0;
+    if (saving > 0 && saving < 100) {
+      return {
+        title: `Lowest-cost option: ${label}`,
+        support: `Only ${formatRm(saving)} cheaper than one shop after travel — a second stop may not be worth it.`,
+        tone: "practical",
+      };
     }
     return {
-      title: `Split between ${names.join(" and ")} to save ${formatRm(
-        recommendation.netSavingCents ?? 0,
-      )}`,
-      summary:
-        "The grocery saving remains worthwhile after the combined trip estimate.",
+      title: `Lowest-cost option: ${label}`,
+      support:
+        saving > 0
+          ? `Save ${formatRm(saving)} versus the best single-shop plan`
+          : "Matches the best single-shop total after travel.",
       tone: "success",
-    } as const;
+    };
   }
 
   const compared = recommendation.twoStoreComparison;
@@ -72,10 +94,10 @@ function headline(input: BasketInput, recommendation: Recommendation) {
     compared.travelCostCents === recommendation.breakEvenTripCostCents
   ) {
     return {
-      title: `One shop costs the same — buy everything at ${names[0]}`,
-      summary: "The totals tie, so JimatCart prefers fewer shops.",
+      title: `Lowest-cost option: ${label}`,
+      support: "Totals tie with a split plan, so one shop is preferred.",
       tone: "practical",
-    } as const;
+    };
   }
   if (
     compared &&
@@ -83,40 +105,41 @@ function headline(input: BasketInput, recommendation: Recommendation) {
     compared.finalTotalCents > recommendation.bestSingleStoreTotalCents
   ) {
     return {
-      title: `Buy everything at ${names[0]} — splitting would cost ${formatRm(
+      title: `Lowest-cost option: ${label}`,
+      support: `Splitting would cost ${formatRm(
         compared.finalTotalCents - recommendation.bestSingleStoreTotalCents,
-      )} more`,
-      summary:
-        "The two-shop groceries cost less, but the combined trip removes that saving.",
+      )} more after travel.`,
       tone: "practical",
-    } as const;
+    };
   }
   return {
-    title: `Buy everything at ${names[0]}`,
-    summary: "This shop gives the lowest complete checkout and travel total.",
+    title: `Lowest-cost option: ${label}`,
+    support: "Lowest complete grocery and travel total.",
     tone: "success",
-  } as const;
+  };
 }
 
-function Metric({
-  label,
-  value,
-  emphasis = false,
-}: {
-  label: string;
-  value: string;
-  emphasis?: boolean;
-}) {
-  return (
-    <div className={`result-metric ${emphasis ? "result-metric--emphasis" : ""}`}>
-      <dt>{label}</dt>
-      <dd>{value}</dd>
-    </div>
-  );
+/** Drops lines already covered by the hero or cost summary. */
+function uniqueReasons(explanation: string[]): string[] {
+  return explanation.filter((line) => {
+    if (/^Buy everything at /.test(line)) return false;
+    if (/^Split the basket between /.test(line)) return false;
+    if (/^Groceries cost /.test(line)) return false;
+    if (/^This plan saves /.test(line)) return false;
+    if (/break-even/i.test(line)) return false;
+    if (/cheaper only while its combined trip/.test(line)) return false;
+    return true;
+  });
 }
 
 function ShoppingPlanExport({ planText }: { planText: string }) {
   const [status, setStatus] = useState<ExportStatus>(null);
+
+  useEffect(() => {
+    if (!status) return;
+    const timer = window.setTimeout(() => setStatus(null), 1400);
+    return () => window.clearTimeout(timer);
+  }, [status]);
 
   async function copyPlan() {
     setStatus(null);
@@ -151,17 +174,14 @@ function ShoppingPlanExport({ planText }: { planText: string }) {
   }
 
   return (
-    <div className="shopping-plan-export">
-      <div>
-        <h4>Take this plan with you</h4>
-        <p>Copy the shopping list or download the same plan as a text file.</p>
-      </div>
+    <div className="shopping-plan-export shopping-plan-export--quiet">
+      <p className="shopping-plan-export__label">Take this plan with you</p>
       <div className="shopping-plan-export__actions">
         <button className="button button--primary" type="button" onClick={copyPlan}>
-          Copy shopping plan
+          Copy plan
         </button>
-        <button className="button button--secondary" type="button" onClick={downloadPlan}>
-          Download shopping plan
+        <button className="button button--download" type="button" onClick={downloadPlan}>
+          Download plan
         </button>
       </div>
       {status && (
@@ -180,15 +200,15 @@ function ShoppingPlanExport({ planText }: { planText: string }) {
 
 function Assumptions() {
   return (
-    <section className="result-assumptions" aria-labelledby="assumptions-heading">
-      <h3 id="assumptions-heading">Keep in mind</h3>
+    <details className="result-assumptions">
+      <summary id="assumptions-heading">Assumptions &amp; limitations</summary>
       <ul>
-        <li>Each item's full quantity is bought from one shop.</li>
+        <li>Each item&apos;s full quantity is bought from one shop.</li>
         <li>Unit prices and total trip costs are manually entered.</li>
         <li>Brand, quality, stock, promotions and travel time are excluded.</li>
         <li>Shop order is not a route recommendation.</li>
       </ul>
-    </section>
+    </details>
   );
 }
 
@@ -196,6 +216,8 @@ export function RecommendationView({
   input,
   recommendation,
   revealRequest = 0,
+  onEditBasket,
+  onStartOver,
 }: RecommendationViewProps) {
   const panelRef = useRef<HTMLElement>(null);
   const previousReveal = useRef(revealRequest);
@@ -217,6 +239,10 @@ export function RecommendationView({
         : null,
     [input, recommendation],
   );
+  const reasons = useMemo(
+    () => (recommendation ? uniqueReasons(recommendation.explanation) : []),
+    [recommendation],
+  );
 
   useEffect(() => {
     if (input && recommendation && revealRequest > previousReveal.current) {
@@ -225,52 +251,80 @@ export function RecommendationView({
     previousReveal.current = revealRequest;
   }, [input, recommendation, revealRequest]);
 
+  const editToolbar = onEditBasket ? (
+    <div className="results-shell__toolbar">
+      <button
+        type="button"
+        className="button button--secondary"
+        onClick={onEditBasket}
+      >
+        Edit basket
+      </button>
+    </div>
+  ) : null;
+
+  const startOverAction = onStartOver ? (
+    <div className="result-start-over">
+      <button
+        type="button"
+        className="button button--start-over"
+        onClick={onStartOver}
+      >
+        Start over
+      </button>
+    </div>
+  ) : null;
+
   if (!input || !recommendation || !resultHeadline) {
     return (
-      <aside ref={panelRef} className="panel panel--recommendation" aria-label="Your smartest shop">
-        <div className="section-heading">
-          <p className="step-label">Step 2</p>
-          <h2>Your smartest shop</h2>
-        </div>
-        <div className="recommendation-empty">
-          <span className="recommendation-empty__badge" aria-hidden="true">RM</span>
-          <h3>Complete your basket to see a recommendation</h3>
-          <p>
-            Add quantities, prices and every trip estimate,
-            then compare the basket.
-          </p>
-        </div>
-        <div className="notice" role="note">
-          <span className="notice__marker" aria-hidden="true">i</span>
-          <p>Every plan includes quantity-based grocery costs and its total trip estimate.</p>
-        </div>
-      </aside>
+      <div className="results-shell">
+        {editToolbar}
+        <aside ref={panelRef} className="panel panel--recommendation" aria-label="Your smartest shop">
+          <div className="section-heading">
+            <h2>Your smartest shop</h2>
+          </div>
+          <div className="recommendation-empty">
+            <span className="recommendation-empty__badge" aria-hidden="true">RM</span>
+            <h3>Complete your basket to see a recommendation</h3>
+            <p>
+              Add quantities, prices and every trip estimate,
+              then compare the basket.
+            </p>
+          </div>
+          {startOverAction}
+        </aside>
+      </div>
     );
   }
 
   if (recommendation.status === "no-valid-plan") {
     return (
-      <aside
-        ref={panelRef}
-        className="panel panel--recommendation panel--recommendation-error"
-        aria-label="Your smartest shop"
-      >
-        <div className="result-hero result-hero--error">
-          <p className="step-label">Step 2</p>
-          <div>
-            <h2>{resultHeadline.title}</h2>
-            <p>{resultHeadline.summary}</p>
+      <div className="results-shell">
+        {editToolbar}
+        <aside
+          ref={panelRef}
+          className="panel panel--recommendation panel--recommendation-error"
+          aria-label="Your smartest shop"
+        >
+          <div className="result-hero result-hero--error result-hero--compact">
+            <div>
+              <h2>{resultHeadline.title}</h2>
+              <p>{resultHeadline.support}</p>
+            </div>
+            <p className="visually-hidden" role="status" aria-live="polite">
+              {resultHeadline.title}
+            </p>
           </div>
-          <p className="visually-hidden" role="status" aria-live="polite">
-            {resultHeadline.title}
-          </p>
-        </div>
-        <div className="no-plan-guidance">
-          <h3>How to make a complete plan</h3>
-          <p>Add a valid price for the affected item at one of the selected shops.</p>
-        </div>
-        <Assumptions />
-      </aside>
+          <div className="result-content result-content--compact">
+            <div className="no-plan-guidance">
+              <h3>How to make a complete plan</h3>
+              <p>Add a valid price for the affected item at one of the selected shops.</p>
+            </div>
+            <Assumptions />
+          </div>
+          {startOverAction}
+        </aside>
+      </div>
     );
   }
 
@@ -280,94 +334,132 @@ export function RecommendationView({
   );
 
   return (
-    <aside
-      ref={panelRef}
-      className={`panel panel--recommendation panel--recommendation-result panel--${resultHeadline.tone}`}
-      aria-label="Your smartest shop"
-    >
-      <div className={`result-hero result-hero--${resultHeadline.tone}`}>
-        <p className="step-label">Step 2</p>
-        <div>
-          <h2>{resultHeadline.title}</h2>
-          <p>{resultHeadline.summary}</p>
-        </div>
-        <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
-          {resultHeadline.title}. Final total {formatRm(recommendation.finalTotalCents)}.
-        </p>
-      </div>
-
-      <div className="result-content">
-        <section className="purchase-plan" aria-labelledby="purchase-plan-heading">
-          <div className="result-section-heading">
-            <h3 id="purchase-plan-heading">What to buy where</h3>
-            <p>{recommendation.storesUsed.length} shop plan</p>
+    <div className="results-shell">
+      {editToolbar}
+      <aside
+        ref={panelRef}
+        className={`panel panel--recommendation panel--recommendation-result panel--${resultHeadline.tone}`}
+        aria-label="Your smartest shop"
+      >
+        <div
+          className={`result-hero result-hero--${resultHeadline.tone} result-hero--celebrate result-hero--compact`}
+        >
+          <div>
+            <h2>{resultHeadline.title}</h2>
+            <p className="result-hero__support">{resultHeadline.support}</p>
           </div>
-          <div className="store-plan-list">
-            {groups.map((group) => (
-              <section className="store-plan" aria-labelledby={`store-${group.storeId}`} key={group.storeId}>
-                <div className="store-plan__heading">
-                  <h4 id={`store-${group.storeId}`}>{group.storeName}</h4>
+          <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+            {resultHeadline.title}. {resultHeadline.support}. Final total{" "}
+            {formatRm(recommendation.finalTotalCents)}.
+          </p>
+        </div>
+
+        <div className="result-content result-content--compact">
+          <section className="cost-summary" aria-labelledby="cost-summary-heading">
+            <div className="cost-summary__total">
+              <div>
+                <p id="cost-summary-heading">Final total</p>
+                <p className="cost-summary__equation">
+                  Groceries {formatRm(recommendation.grocerySubtotalCents)}
+                  {" + "}
+                  Travel {formatRm(recommendation.travelCostCents)}
+                </p>
+              </div>
+              <strong>{formatRm(recommendation.finalTotalCents)}</strong>
+            </div>
+            <dl className="cost-summary__compare">
+              {recommendation.bestSingleStoreTotalCents !== null && (
+                <div>
+                  <dt>Best single-shop total</dt>
+                  <dd>{formatRm(recommendation.bestSingleStoreTotalCents)}</dd>
                 </div>
-                <ul>
-                  {group.assignments.map((assignment) => {
-                    return (
+              )}
+              {recommendation.netSavingCents !== null && recommendation.netSavingCents > 0 && (
+                <div className="cost-summary__saving">
+                  <dt>Net saving</dt>
+                  <dd>{formatRm(recommendation.netSavingCents)}</dd>
+                </div>
+              )}
+            </dl>
+            {recommendation.breakEvenTripCostCents !== null &&
+              recommendation.breakEvenTripCostCents > 0 && (
+                <details className="break-even-details">
+                  <summary>Break-even details</summary>
+                  <div className="break-even-details__body">
+                    <p className="break-even-details__amount">
+                      Break-even combined-trip cost:{" "}
+                      <strong>{formatRm(recommendation.breakEvenTripCostCents)}</strong>
+                    </p>
+                    <ul>
+                      {comparedPairNames && (
+                        <li>
+                          Compared route: <strong>{comparedPairNames.join(" + ")}</strong>
+                        </li>
+                      )}
+                      <li>Below this amount, the pair is cheaper.</li>
+                      <li>
+                        At the exact amount, JimatCart chooses one shop because the
+                        totals tie.
+                      </li>
+                    </ul>
+                  </div>
+                </details>
+              )}
+          </section>
+
+          <section className="purchase-plan" aria-labelledby="purchase-plan-heading">
+            <div className="result-section-heading">
+              <h3 id="purchase-plan-heading">What to buy where</h3>
+              <p>{recommendation.storesUsed.length}-shop plan</p>
+            </div>
+            <div className="store-plan-list">
+              {groups.map((group) => (
+                <section
+                  className="store-plan"
+                  aria-labelledby={`store-${group.storeId}`}
+                  key={group.storeId}
+                >
+                  <div className="store-plan__heading">
+                    <h4 id={`store-${group.storeId}`}>{group.storeName}</h4>
+                    <span className="store-plan__count">
+                      {group.assignments.length} item
+                      {group.assignments.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <ul>
+                    {group.assignments.map((assignment) => (
                       <li key={assignment.itemId}>
                         <span>
-                          <strong>{itemNames.get(assignment.itemId) ?? "Unknown item"}</strong>
-                          <small>Quantity {assignment.quantity}</small>
+                          <strong>
+                            {itemNames.get(assignment.itemId) ?? "Unknown item"}
+                          </strong>
+                          <small>Qty {assignment.quantity}</small>
                         </span>
                         <strong>{formatRm(assignment.lineTotalCents)}</strong>
                       </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ))}
-          </div>
-        </section>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          </section>
 
-        <section className="cost-breakdown" aria-labelledby="cost-breakdown-heading">
-          <div className="cost-breakdown__heading">
-            <h3 id="cost-breakdown-heading">Cost breakdown</h3>
-          </div>
-          <dl className="result-metrics">
-            <Metric label="Grocery checkout" value={formatRm(recommendation.grocerySubtotalCents)} />
-            <Metric label="Estimated travel" value={formatRm(recommendation.travelCostCents)} />
-            <Metric label="Final total" value={formatRm(recommendation.finalTotalCents)} emphasis />
-            {recommendation.bestSingleStoreTotalCents !== null && (
-              <Metric label="Best single-shop final total" value={formatRm(recommendation.bestSingleStoreTotalCents)} />
-            )}
-            {recommendation.netSavingCents !== null && recommendation.netSavingCents > 0 && (
-              <Metric label="Net saving" value={formatRm(recommendation.netSavingCents)} />
-            )}
-          </dl>
+          {reasons.length > 0 && (
+            <section className="why-this-plan why-this-plan--compact" aria-labelledby="why-heading">
+              <h3 id="why-heading">Why this plan won</h3>
+              <ul>
+                {reasons.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-          {recommendation.breakEvenTripCostCents !== null &&
-            recommendation.breakEvenTripCostCents > 0 && (
-              <div className="break-even-note">
-                <strong>
-                  Break-even combined-trip cost: {formatRm(recommendation.breakEvenTripCostCents)}
-                </strong>
-                <p>
-                  {comparedPairNames && `For ${comparedPairNames.join(" and ")}, `}
-                  below this amount the pair is cheaper. At the exact amount,
-                  JimatCart chooses one shop because the totals tie.
-                </p>
-              </div>
-            )}
           {planText && <ShoppingPlanExport planText={planText} />}
-        </section>
-
-        <section className="why-this-plan" aria-labelledby="why-heading">
-          <h3 id="why-heading">Why this plan won</h3>
-          <ul>
-            {recommendation.explanation.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        </section>
-        <Assumptions />
-      </div>
-    </aside>
+          <Assumptions />
+        </div>
+        {startOverAction}
+      </aside>
+    </div>
   );
 }
