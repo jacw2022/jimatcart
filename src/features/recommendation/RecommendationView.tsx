@@ -121,19 +121,6 @@ function headline(input: BasketInput, recommendation: Recommendation): ResultHea
   };
 }
 
-/** Drops lines already covered by the hero or cost summary. */
-function uniqueReasons(explanation: string[]): string[] {
-  return explanation.filter((line) => {
-    if (/^Buy everything at /.test(line)) return false;
-    if (/^Split the basket between /.test(line)) return false;
-    if (/^Groceries cost /.test(line)) return false;
-    if (/^This plan saves /.test(line)) return false;
-    if (/break-even/i.test(line)) return false;
-    if (/cheaper only while its combined trip/.test(line)) return false;
-    return true;
-  });
-}
-
 function ShoppingPlanExport({ planText }: { planText: string }) {
   const [status, setStatus] = useState<ExportStatus>(null);
 
@@ -168,7 +155,7 @@ function ShoppingPlanExport({ planText }: { planText: string }) {
       document.body.append(link);
       link.click();
       link.remove();
-      URL.revokeObjectURL(url);
+      window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
       setStatus({ tone: "success", message: "Shopping plan downloaded." });
     } catch {
       setStatus({ tone: "error", message: "Could not download the plan. Please try again." });
@@ -243,7 +230,7 @@ export function RecommendationView({
     [input, recommendation],
   );
   const reasons = useMemo(
-    () => (recommendation ? uniqueReasons(recommendation.explanation) : []),
+    () => recommendation?.reasons ?? [],
     [recommendation],
   );
 

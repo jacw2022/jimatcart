@@ -100,10 +100,26 @@ describe("RecommendationView", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(expected));
     expect(screen.getByText("Saved to clipboard.")).toHaveAttribute("role", "status");
 
+    vi.useFakeTimers();
     fireEvent.click(screen.getByRole("button", { name: "Download plan" }));
     expect(await createObjectURL.mock.calls[0][0].text()).toBe(expected);
     expect(click).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(10_000);
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:plan");
+    vi.useRealTimers();
+  });
+
+  it("renders why-this-plan reasons for a successful split", () => {
+    const basket = input();
+    render(<RecommendationView input={basket} recommendation={optimizeBasket(basket)} />);
+    expect(screen.getByRole("heading", { name: "Why this plan won" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Alpha Mart is cheapest for Rice/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Bravo Grocer is cheapest for Milk/i),
+    ).toBeInTheDocument();
   });
 
   it("announces clipboard failure", async () => {
