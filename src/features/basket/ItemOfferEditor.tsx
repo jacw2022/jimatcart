@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   BasketDraftErrors,
   EditableBasketItem,
@@ -25,6 +25,11 @@ interface ItemOfferEditorProps {
   onPriceBlur: (itemId: string, shopId: string) => void;
 }
 
+function joinDescribedBy(...ids: Array<string | false | undefined>): string | undefined {
+  const value = ids.filter(Boolean).join(" ");
+  return value || undefined;
+}
+
 function GroceryNameField({
   item,
   itemIndex,
@@ -44,6 +49,13 @@ function GroceryNameField({
 }) {
   const [editing, setEditing] = useState(autoEdit || !item.name.trim());
   const inputRef = useRef<HTMLInputElement>(null);
+  const nameId = `${item.id}-name`;
+  const errorId = `${item.id}-name-error`;
+  const availId = `${item.id}-avail-error`;
+  const describedBy = joinDescribedBy(
+    error && errorId,
+    availabilityError && availId,
+  );
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
@@ -54,15 +66,24 @@ function GroceryNameField({
       <div className="grocery-name">
         <button
           type="button"
+          id={nameId}
           className="grocery-name__display"
           onClick={() => setEditing(true)}
           aria-label={`Edit name for ${itemName}`}
+          aria-invalid={Boolean(error || availabilityError)}
+          aria-describedby={describedBy}
         >
           {itemName}
         </button>
-        {error && <span className="field-error">{error}</span>}
+        {error && (
+          <span className="field-error" id={errorId}>
+            {error}
+          </span>
+        )}
         {availabilityError && (
-          <span className="field-error">{availabilityError}</span>
+          <span className="field-error" id={availId}>
+            {availabilityError}
+          </span>
         )}
       </div>
     );
@@ -73,11 +94,13 @@ function GroceryNameField({
       <span className="mobile-field-label">Item name</span>
       <input
         ref={inputRef}
+        id={nameId}
         type="text"
         value={item.name}
         placeholder="e.g. Jasmine rice"
         aria-label={`Item ${itemIndex + 1} name`}
-        aria-invalid={Boolean(error)}
+        aria-invalid={Boolean(error || availabilityError)}
+        aria-describedby={describedBy}
         onChange={(event) =>
           onItemChange(item.id, { name: event.target.value })
         }
@@ -95,9 +118,15 @@ function GroceryNameField({
           }
         }}
       />
-      {error && <span className="field-error">{error}</span>}
+      {error && (
+        <span className="field-error" id={errorId}>
+          {error}
+        </span>
+      )}
       {availabilityError && (
-        <span className="field-error">{availabilityError}</span>
+        <span className="field-error" id={availId}>
+          {availabilityError}
+        </span>
       )}
     </label>
   );
@@ -129,9 +158,15 @@ function ShopPriceField({
   const shopName = shop.name.trim() || "Unnamed shop";
   const priceValue = item.priceInputsByStoreId[shop.id] ?? "";
   const unavailable = Boolean(item.unavailableByStoreId?.[shop.id]);
-  const unavailableId = useId();
+  const priceId = `${item.id}-price-${shop.id}`;
+  const priceErrorId = `${item.id}-price-${shop.id}-error`;
+  const unavailableId = `${item.id}-unavailable-${shop.id}`;
+  const availId = `${item.id}-avail-error`;
   const priceInputRef = useRef<HTMLInputElement>(null);
   const isLeadAvailabilityTarget = shop.id === shops[0]?.id;
+  const showAvailOnToggle = Boolean(
+    showErrors && availabilityError && isLeadAvailabilityTarget,
+  );
 
   return (
     <div className="shop-price">
@@ -143,6 +178,7 @@ function ShopPriceField({
           <span aria-hidden="true">RM</span>
           <input
             ref={priceInputRef}
+            id={priceId}
             type="text"
             inputMode="decimal"
             value={unavailable ? "" : priceValue}
@@ -150,6 +186,7 @@ function ShopPriceField({
             disabled={unavailable}
             aria-label={`${itemName} price at ${shopName}`}
             aria-invalid={Boolean(priceError)}
+            aria-describedby={priceError ? priceErrorId : undefined}
             onChange={(event) =>
               onPriceChange(item.id, shop.id, event.target.value)
             }
@@ -161,9 +198,8 @@ function ShopPriceField({
             id={unavailableId}
             type="checkbox"
             checked={unavailable}
-            aria-invalid={Boolean(
-              showErrors && availabilityError && isLeadAvailabilityTarget,
-            )}
+            aria-invalid={showAvailOnToggle}
+            aria-describedby={showAvailOnToggle ? availId : undefined}
             onChange={(event) => {
               if (event.target.checked) {
                 onUnavailableChange(item.id, shop.id, true);
@@ -176,7 +212,11 @@ function ShopPriceField({
           <span>Unavailable</span>
         </label>
       </div>
-      {priceError && <span className="field-error">{priceError}</span>}
+      {priceError && (
+        <span className="field-error" id={priceErrorId}>
+          {priceError}
+        </span>
+      )}
     </div>
   );
 }
@@ -199,7 +239,7 @@ export function ItemOfferEditor({
     <section className="items-editor" aria-labelledby="item-editor-heading">
       <div className="editor-section__heading editor-section__heading--items">
         <div>
-          <h3 id="item-editor-heading">Groceries and prices</h3>
+          <h2 id="item-editor-heading">Groceries and prices</h2>
           <p>
             Enter quantity and unit price at each shop. Leave a price blank only
             while you still need to type it — mark Unavailable when that shop
@@ -257,6 +297,8 @@ export function ItemOfferEditor({
                 const availabilityError = showErrors
                   ? errors.availability[item.id]
                   : undefined;
+                const qtyId = `${item.id}-qty`;
+                const qtyErrorId = `${item.id}-qty-error`;
                 return (
                   <tr className="item-row basic-item-row" key={item.id}>
                     <th scope="row">
@@ -274,12 +316,16 @@ export function ItemOfferEditor({
                       <label className="table-field">
                         <span className="mobile-field-label">Quantity</span>
                         <input
+                          id={qtyId}
                           className="quantity-input"
                           type="text"
                           inputMode="numeric"
                           value={item.quantityInput}
                           aria-label={`${itemName} quantity`}
                           aria-invalid={Boolean(quantityError)}
+                          aria-describedby={
+                            quantityError ? qtyErrorId : undefined
+                          }
                           onChange={(event) =>
                             onItemChange(item.id, {
                               quantityInput: event.target.value,
@@ -287,7 +333,9 @@ export function ItemOfferEditor({
                           }
                         />
                         {quantityError && (
-                          <span className="field-error">{quantityError}</span>
+                          <span className="field-error" id={qtyErrorId}>
+                            {quantityError}
+                          </span>
                         )}
                       </label>
                     </td>
