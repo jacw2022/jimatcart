@@ -2268,7 +2268,6 @@ input[aria-invalid="true"]:focus-visible {
   }
 
   .wizard__stage,
-  .welcome-step__mark,
   .result-hero--celebrate {
     animation: none !important;
     transition: none !important;
@@ -2416,66 +2415,145 @@ input[aria-invalid="true"]:focus-visible {
 
 .welcome-step {
   display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: center;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  min-height: min(68vh, 34rem);
+  padding: clamp(1.75rem, 4.5vw, 3.25rem) clamp(1.5rem, 4vw, 3rem);
+  border: 1px solid #cfe6d6;
+  border-radius: clamp(1.6rem, 3vw, 2.35rem);
+  background: #ffffff;
+  box-shadow: 0 20px 48px rgb(15 61 46 / 10%);
+  overflow: clip;
+}
+
+.welcome-step__copy {
+  display: grid;
   justify-items: start;
   gap: 0.85rem;
-  min-height: min(70vh, 36rem);
-  padding: clamp(1.75rem, 5vw, 3rem);
-  border: 1px solid #b7dcc4;
-  border-radius: calc(var(--radius-panel) + 0.25rem);
-  background:
-    radial-gradient(circle at 88% 12%, rgb(184 240 110 / 55%), transparent 14rem),
-    radial-gradient(circle at 8% 90%, rgb(31 122 76 / 12%), transparent 16rem),
-    var(--surface);
-  box-shadow: var(--shadow);
+  max-width: 28rem;
 }
 
-.welcome-step__mark {
-  display: grid;
-  width: 4.25rem;
-  height: 4.25rem;
-  place-items: center;
-  border-radius: 1.25rem;
-  color: var(--green-950);
-  background: var(--lime);
-  font-family: var(--font-display);
-  font-size: 1.35rem;
-  font-weight: 800;
-}
-
-.welcome-step__brand {
-  margin: 0.35rem 0 0;
+.welcome-step__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0;
   color: var(--green-700);
-  font-family: var(--font-display);
-  font-size: 1.35rem;
+  font-size: 0.78rem;
   font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.welcome-step__eyebrow::before {
+  content: "";
+  width: 1.65rem;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--green-700);
 }
 
 .welcome-step h1 {
-  max-width: 12ch;
+  max-width: 11ch;
   margin: 0;
   color: var(--green-950);
   font-family: var(--font-display);
-  font-size: clamp(2.6rem, 8vw, 4.2rem);
+  font-size: clamp(2.55rem, 6.2vw, 3.85rem);
   font-weight: 800;
   line-height: 0.98;
   letter-spacing: -0.03em;
 }
 
 .welcome-step__pitch {
-  max-width: 34ch;
-  margin: 0.35rem 0 0.5rem;
+  max-width: 36ch;
+  margin: 0;
   color: var(--neutral-700);
-  font-size: 1.08rem;
-  line-height: 1.55;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.welcome-step__actions {
+  display: grid;
+  justify-items: start;
+  gap: 0.85rem;
+  margin-top: 0.45rem;
 }
 
 .button--welcome {
-  min-width: 12rem;
-  min-height: 3.15rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 3.25rem;
+  padding-block: 0.35rem;
+  padding-left: 1.35rem;
+  padding-right: 0.5rem;
   border-radius: 999px;
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1.08rem;
   font-weight: 700;
+}
+
+.welcome-step__cta-badge {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  border-radius: 999px;
+  color: #ffffff;
+  background: var(--green-950);
+}
+
+.welcome-step__assurance {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: var(--neutral-700);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.welcome-step__assurance-icon {
+  flex-shrink: 0;
+  color: var(--green-700);
+}
+
+.welcome-step__visual {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  align-self: stretch;
+}
+
+@media (max-width: 860px) {
+  .welcome-step {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.75rem;
+    min-height: 0;
+    padding: clamp(1.5rem, 5vw, 2.25rem);
+  }
+
+  .welcome-step__copy {
+    max-width: none;
+  }
+
+  .welcome-step h1 {
+    max-width: 12ch;
+  }
+
+  .welcome-step__visual {
+    order: 2;
+    width: min(100%, 570px);
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 460px) {
+  .welcome-step h1 {
+    font-size: clamp(2.15rem, 11vw, 2.75rem);
+  }
 }
 
 .result-hero--celebrate {
