@@ -69,4 +69,62 @@ describe("basic basket draft conversion", () => {
     expect(result.ok).toBe(false);
     expect(result.errors.prices.rice.b).toMatch(/mark Unavailable/i);
   });
+
+  it("names the item when every shop is marked Unavailable", () => {
+    const result = toBasketInput({
+      ...draft,
+      items: [
+        {
+          ...draft.items[0],
+          priceInputsByStoreId: { a: "", b: "" },
+          unavailableByStoreId: { a: true, b: true },
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.availability.rice).toMatch(
+      /No selected shop stocks Rice/i,
+    );
+    expect(result.errors.availability.rice).toMatch(/remove this item/i);
+  });
+
+  it("accepts a free promotional item price", () => {
+    const result = toBasketInput({
+      ...draft,
+      items: [
+        {
+          ...draft.items[0],
+          priceInputsByStoreId: { a: "0", b: "" },
+          unavailableByStoreId: { b: true },
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.input.items[0].pricesByStoreId.a).toBe(0);
+    }
+  });
+
+  it("accepts pasted prices with RM prefix and thousands separators", () => {
+    const result = toBasketInput({
+      ...draft,
+      items: [
+        {
+          ...draft.items[0],
+          priceInputsByStoreId: { a: "RM 18.90", b: "1,200.00" },
+          unavailableByStoreId: {},
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.input.items[0].pricesByStoreId).toEqual({
+        a: 1_890,
+        b: 120_000,
+      });
+    }
+  });
 });

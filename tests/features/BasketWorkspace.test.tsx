@@ -135,4 +135,43 @@ describe("BasketWorkspace", () => {
     expect(screen.getByRole("navigation", { name: "Basket comparison steps" })).toBeInTheDocument();
     expect(screen.getByText(/Step 5 of 5 · Results/i)).toBeInTheDocument();
   });
+
+  it("shows a price error on blur and counts valid prices in the hint", () => {
+    render(<BasketWorkspace />);
+    goToItems();
+    const price = screen.getByLabelText("Jasmine rice price at Kedai Hijau");
+    fireEvent.change(price, { target: { value: "5.555" } });
+    fireEvent.blur(price);
+    expect(
+      screen.getByText("Use at most two decimal places."),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/need fixing/i)).toBeInTheDocument();
+  });
+
+  it("offers remove when an item is unavailable at every shop", async () => {
+    render(<BasketWorkspace />);
+    goToItems();
+    const eggsKedai = screen.getByLabelText("Grade B eggs price at Kedai Hijau");
+    const eggsPasar = screen.getByLabelText("Grade B eggs price at Pasar Jimat");
+    const kedaiToggle = eggsKedai
+      .closest(".shop-price")
+      ?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    const pasarToggle = eggsPasar
+      .closest(".shop-price")
+      ?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    expect(kedaiToggle).not.toBeNull();
+    expect(pasarToggle).not.toBeNull();
+    fireEvent.click(kedaiToggle!);
+    fireEvent.click(pasarToggle!);
+    fireEvent.click(screen.getByRole("button", { name: "Next: Trip costs" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /No selected shop stocks Grade B eggs/i,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Remove this item" }));
+    await waitFor(() => {
+      expect(
+        screen.queryByLabelText("Grade B eggs quantity"),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
