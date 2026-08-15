@@ -55,6 +55,7 @@ export function TripCostEditor({
           <span className="money-input money-input--trip">
             <span aria-hidden="true">RM</span>
             <input
+              id={`trip-cost-${index}`}
               type="text"
               inputMode="decimal"
               value={trip.costInput}
@@ -79,7 +80,7 @@ export function TripCostEditor({
   return (
     <section className="trip-cost" aria-labelledby="trip-cost-heading">
       <div className="trip-cost__heading">
-        <h3 id="trip-cost-heading">Travel costs</h3>
+        <h2 id="trip-cost-heading">Travel costs</h2>
         <p id="trip-cost-help">
           Estimate Grab, petrol, tolls or parking for each shopping plan. Use
           what you would actually spend for that run — not a per-km formula.
@@ -101,7 +102,7 @@ export function TripCostEditor({
           </p>
           <div className="trip-cost__group">
             <div className="trip-cost__group-head">
-              <h4>One-shop trips</h4>
+              <h3>One-shop trips</h3>
               <span
                 className={`trip-cost__count${
                   singleEntered < singleTrips.length ? " trip-cost__count--open" : ""
@@ -122,7 +123,7 @@ export function TripCostEditor({
           {pairTrips.length > 0 && (
             <div className="trip-cost__group trip-cost__group--pairs">
               <div className="trip-cost__group-head">
-                <h4>Two-shop trips</h4>
+                <h3>Two-shop trips</h3>
                 <span
                   className={`trip-cost__count${
                     pairEntered < pairTrips.length ? " trip-cost__count--open" : ""
