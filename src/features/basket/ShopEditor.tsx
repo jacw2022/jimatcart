@@ -21,7 +21,7 @@ export function ShopEditor({
     <section className="editor-section" aria-labelledby="shop-editor-heading">
       <div className="editor-section__heading">
         <div>
-          <h3 id="shop-editor-heading">Shops to compare</h3>
+          <h2 id="shop-editor-heading">Shops to compare</h2>
           <p>Add up to three familiar shops.</p>
         </div>
         <button
@@ -77,6 +77,7 @@ export function ShopEditor({
                   className="button button--danger button--remove"
                   type="button"
                   onClick={() => onRemove(shop.id)}
+                  aria-label={`Remove ${shop.name.trim() || `shop ${index + 1}`}`}
                 >
                   Remove
                 </button>
