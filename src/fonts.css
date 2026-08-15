@@ -1,0 +1,11 @@
+/* Self-hosted subsets — latin only to keep the first paint small. */
+@import "@fontsource/baloo-2/latin-500.css";
+@import "@fontsource/baloo-2/latin-600.css";
+@import "@fontsource/baloo-2/latin-700.css";
+@import "@fontsource/baloo-2/latin-800.css";
+@import "@fontsource/figtree/latin-400.css";
+@import "@fontsource/figtree/latin-400-italic.css";
+@import "@fontsource/figtree/latin-500.css";
+@import "@fontsource/figtree/latin-600.css";
+@import "@fontsource/figtree/latin-700.css";
+@import "@fontsource/figtree/latin-800.css";
