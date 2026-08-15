@@ -30,12 +30,15 @@ describe("basket storage", () => {
       hasCompared: true,
     });
     expect(storage.getItem(BASKET_STORAGE_KEY)).not.toMatch(/recommendation/i);
+    expect(JSON.parse(storage.getItem(BASKET_STORAGE_KEY)!)).toMatchObject({
+      version: 4,
+    });
   });
 
   it.each([
     "not json",
-    JSON.stringify({ version: 2, draft: {}, hasCompared: true }),
-    JSON.stringify({ version: 1, draft: { shops: [] }, hasCompared: true }),
+    JSON.stringify({ version: 4, draft: {}, hasCompared: true }),
+    JSON.stringify({ version: 3, draft: { shops: [] }, hasCompared: true }),
   ])("rejects malformed or incompatible saved data", (saved) => {
     const storage = memoryStorage();
     storage.setItem(BASKET_STORAGE_KEY, saved);
