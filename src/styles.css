@@ -293,6 +293,25 @@ textarea {
   backdrop-filter: blur(2px);
 }
 
+.confirm-dialog {
+  width: min(28rem, calc(100% - 2rem));
+  max-width: 100%;
+  margin: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+}
+
+.confirm-dialog::backdrop {
+  background: rgb(15 61 46 / 45%);
+  backdrop-filter: blur(2px);
+}
+
+.confirm-dialog__panel {
+  width: 100%;
+}
+
 .reset-confirmation--modal {
   width: min(28rem, 100%);
   margin: 0;
