@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BasketWorkspace } from "../../src/features/basket/BasketWorkspace";
+import { GO_WELCOME_EVENT } from "../../src/features/basket/wizardEvents";
 import { BASKET_STORAGE_KEY } from "../../src/storage/basketStorage";
 
 function startWizard() {
@@ -174,6 +175,18 @@ describe("BasketWorkspace", () => {
     expect(within(dialog).getByText(/trip cost/i)).toBeInTheDocument();
     expect(within(dialog).getByText(/discards/i)).toBeInTheDocument();
     expect(within(dialog).queryByText(/\d+ prices?/i)).not.toBeInTheDocument();
+  });
+
+  it("returns to welcome from the brand control", () => {
+    render(<BasketWorkspace />);
+    startWizard();
+    expect(screen.getByRole("heading", { name: "Where do you shop?" })).toBeInTheDocument();
+    act(() => {
+      window.dispatchEvent(new Event(GO_WELCOME_EVENT));
+    });
+    expect(
+      screen.getByRole("heading", { name: "Make every ringgit count." }),
+    ).toBeInTheDocument();
   });
 
   it("walks through each wizard step to results", async () => {

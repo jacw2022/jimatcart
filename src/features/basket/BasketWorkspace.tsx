@@ -27,6 +27,7 @@ import type {
   EditableBasketItem,
 } from "./basketDraft";
 import { createSampleBasketDraft } from "./sampleBasket";
+import { GO_WELCOME_EVENT } from "./wizardEvents";
 import {
   canAdvanceFromItems,
   canAdvanceFromShops,
@@ -269,6 +270,17 @@ export function BasketWorkspace() {
     }
     document.addEventListener("visibilitychange", flushIfHidden);
     return () => document.removeEventListener("visibilitychange", flushIfHidden);
+  }, []);
+
+  useEffect(() => {
+    function goWelcome() {
+      setStep(0);
+      setStepDirection(-1);
+      setStepAttempted(false);
+      setTouchedFields(new Set());
+    }
+    window.addEventListener(GO_WELCOME_EVENT, goWelcome);
+    return () => window.removeEventListener(GO_WELCOME_EVENT, goWelcome);
   }, []);
 
   function addShop() {

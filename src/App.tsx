@@ -1,11 +1,24 @@
 import { BasketWorkspace } from "./features/basket/BasketWorkspace";
+import { GO_WELCOME_EVENT } from "./features/basket/wizardEvents";
 
 export function App() {
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       <header className="site-header site-header--slim">
         <div className="site-header__content">
-          <a className="brand" href="#main-content" aria-label="JimatCart home">
+          <a
+            className="brand"
+            href="#main-content"
+            aria-label="JimatCart"
+            onClick={(event) => {
+              event.preventDefault();
+              window.dispatchEvent(new Event(GO_WELCOME_EVENT));
+              document.getElementById("main-content")?.focus({ preventScroll: true });
+            }}
+          >
             <img
               className="brand__mark"
               src="/jimatcart-mark.png"
