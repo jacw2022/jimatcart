@@ -126,10 +126,33 @@ describe("RecommendationView", () => {
     const basket = input();
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
-      value: { writeText: vi.fn().mockRejectedValue(new DOMException("Denied")) },
+      value: {
+        writeText: vi
+          .fn()
+          .mockRejectedValue(new DOMException("Denied", "NotAllowedError")),
+      },
     });
     render(<RecommendationView input={basket} recommendation={optimizeBasket(basket)} />);
     fireEvent.click(screen.getByRole("button", { name: "Copy plan" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Could not copy/i);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /Clipboard permission denied/i,
+    );
+    expect(screen.getByRole("textbox", { name: /Shopping plan text/i })).toBeInTheDocument();
+  });
+
+  it("falls back when the Clipboard API is unavailable", async () => {
+    const basket = input();
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: undefined,
+    });
+    Object.defineProperty(document, "execCommand", {
+      configurable: true,
+      value: vi.fn().mockReturnValue(true),
+    });
+    render(<RecommendationView input={basket} recommendation={optimizeBasket(basket)} />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy plan" }));
+    expect(await screen.findByText("Saved to clipboard.")).toBeInTheDocument();
+    expect(document.execCommand).toHaveBeenCalledWith("copy");
   });
 });

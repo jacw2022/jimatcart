@@ -123,29 +123,67 @@ function headline(input: BasketInput, recommendation: Recommendation): ResultHea
 
 function ShoppingPlanExport({ planText }: { planText: string }) {
   const [status, setStatus] = useState<ExportStatus>(null);
+  const [fallbackText, setFallbackText] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!status) return;
-    const timer = window.setTimeout(() => setStatus(null), 1400);
+    if (!status || status.tone === "error") return;
+    const timer = window.setTimeout(() => setStatus(null), 4000);
     return () => window.clearTimeout(timer);
   }, [status]);
 
+  function copyWithFallback(text: string): boolean {
+    const field = document.createElement("textarea");
+    field.value = text;
+    field.setAttribute("readonly", "");
+    field.style.position = "fixed";
+    field.style.left = "-9999px";
+    document.body.append(field);
+    field.select();
+    try {
+      return document.execCommand("copy");
+    } catch {
+      return false;
+    } finally {
+      field.remove();
+    }
+  }
+
   async function copyPlan() {
     setStatus(null);
+    setFallbackText(null);
     try {
-      if (!navigator.clipboard?.writeText) throw new Error("Unavailable");
-      await navigator.clipboard.writeText(planText);
-      setStatus({ tone: "success", message: "Saved to clipboard." });
-    } catch {
-      setStatus({
-        tone: "error",
-        message: "Could not copy the plan. Check clipboard permission and try again.",
-      });
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(planText);
+        setStatus({ tone: "success", message: "Saved to clipboard." });
+        return;
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "NotAllowedError") {
+        setFallbackText(planText);
+        setStatus({
+          tone: "error",
+          message:
+            "Clipboard permission denied. Select the plan below and copy it manually.",
+        });
+        return;
+      }
     }
+
+    if (copyWithFallback(planText)) {
+      setStatus({ tone: "success", message: "Saved to clipboard." });
+      return;
+    }
+
+    setFallbackText(planText);
+    setStatus({
+      tone: "error",
+      message: "Could not copy automatically. Select the plan below and copy it.",
+    });
   }
 
   function downloadPlan() {
     setStatus(null);
+    setFallbackText(null);
     try {
       const blob = new Blob([planText], { type: "text/plain;charset=utf-8" });
       const url = URL.createObjectURL(blob);
@@ -182,6 +220,17 @@ function ShoppingPlanExport({ planText }: { planText: string }) {
         >
           {status.message}
         </p>
+      )}
+      {fallbackText && (
+        <label className="shopping-plan-export__fallback">
+          <span className="visually-hidden">Shopping plan text</span>
+          <textarea
+            readOnly
+            value={fallbackText}
+            rows={8}
+            onFocus={(event) => event.currentTarget.select()}
+          />
+        </label>
       )}
     </div>
   );
