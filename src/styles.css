@@ -129,17 +129,12 @@ textarea {
 }
 
 .brand__mark {
-  display: grid;
-  width: 2.15rem;
-  height: 2.15rem;
-  place-items: center;
-  border-radius: 0.85rem;
-  color: var(--green-950);
-  background: var(--lime);
-  font-family: var(--font-display);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  object-fit: contain;
+  background: transparent;
 }
 
 .step-label {
