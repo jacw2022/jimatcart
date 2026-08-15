@@ -1,8 +1,10 @@
 import { motion } from "motion/react";
+import type { Ref } from "react";
 import { InteractiveBasket } from "./InteractiveBasket";
 
 interface WelcomeStepProps {
   onStart: () => void;
+  headingRef?: Ref<HTMLHeadingElement>;
 }
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -51,7 +53,7 @@ function CheckIcon() {
   );
 }
 
-export function WelcomeStep({ onStart }: WelcomeStepProps) {
+export function WelcomeStep({ onStart, headingRef }: WelcomeStepProps) {
   return (
     <section className="welcome-step" aria-labelledby="welcome-heading">
       <div className="welcome-step__copy">
@@ -64,7 +66,10 @@ export function WelcomeStep({ onStart }: WelcomeStepProps) {
           Smarter grocery trips
         </motion.p>
         <motion.h1
+          ref={headingRef}
           id="welcome-heading"
+          className="step-heading"
+          tabIndex={-1}
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.05, ease }}
