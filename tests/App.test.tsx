@@ -1,30 +1,31 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App";
 
 describe("JimatCart application shell", () => {
-  it("introduces the product and its purpose", () => {
+  it("introduces the product and its purpose on welcome", () => {
     render(<App />);
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Make every ringgit count." }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("See if a second stop saves you money."),
+      screen.getByText(/See if a second stop saves you money/i),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("region", { name: "Interactive basket savings preview" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "Start comparing" }),
+    ).toBeInTheDocument();
   });
 
-  it("provides labelled basket and recommendation regions", () => {
+  it("opens the shops step from welcome", () => {
     render(<App />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Start comparing" }));
     expect(
-      screen.getByRole("region", { name: "Build your basket" }),
+      screen.getByRole("region", { name: "Where do you shop?" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("complementary", { name: "Your smartest shop" }),
+      screen.getByRole("navigation", { name: "Basket comparison steps" }),
     ).toBeInTheDocument();
   });
 
