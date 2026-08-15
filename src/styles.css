@@ -2272,6 +2272,32 @@ input[aria-invalid="true"]:focus-visible {
     animation: none !important;
     transition: none !important;
   }
+
+  .optimizer-scene .route,
+  .optimizer-scene .route-dot,
+  .optimizer-scene .pin,
+  .optimizer-scene .basket-group,
+  .optimizer-scene .basket-face .eye,
+  .optimizer-scene .decision-badge,
+  .optimizer-scene .check,
+  .optimizer-scene .spark,
+  .optimizer-scene .orbit,
+  .optimizer-scene .leaf,
+  .optimizer-scene .hint-dot {
+    animation: none !important;
+  }
+
+  .optimizer-scene .scene-glow,
+  .optimizer-scene .optimizer-art,
+  .optimizer-scene .ambient-layer,
+  .optimizer-scene .shop-choice,
+  .optimizer-scene .coin {
+    transition: none !important;
+  }
+
+  .is-engaged .check {
+    stroke-dashoffset: 0;
+  }
 }
 
 /* --- Wizard shell --- */
