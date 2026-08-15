@@ -9,56 +9,53 @@ export const SAMPLE_BASKET_DRAFT: BasketDraft = {
   items: [
     {
       id: "jasmine-rice",
-      name: "Jasmine rice 5 kg",
+      name: "Jasmine rice",
       quantityInput: "1",
       priceInputsByStoreId: {
         "kedai-hijau": "18.90",
-        "pasar-jimat": "20.50",
-        "mart-setia": "19.80",
+        "pasar-jimat": "19.50",
+        "mart-setia": "20.20",
       },
     },
     {
       id: "cooking-oil",
-      name: "Cooking oil 1 kg",
+      name: "Cooking oil",
       quantityInput: "2",
       priceInputsByStoreId: {
         "kedai-hijau": "7.80",
-        "pasar-jimat": "7.20",
+        "pasar-jimat": "7.10",
         "mart-setia": "7.60",
       },
     },
     {
       id: "eggs",
-      name: "Grade B eggs 10-pack",
+      name: "Grade B eggs",
       quantityInput: "1",
       priceInputsByStoreId: {
-        "kedai-hijau": "13.20",
-        "pasar-jimat": "12.90",
+        "kedai-hijau": "7.00",
+        "pasar-jimat": "6.50",
         "mart-setia": "",
       },
     },
     {
       id: "fresh-milk",
-      name: "Fresh milk 1 L",
+      name: "Fresh milk",
       quantityInput: "2",
       priceInputsByStoreId: {
         "kedai-hijau": "7.10",
-        "pasar-jimat": "7.40",
+        "pasar-jimat": "6.95",
         "mart-setia": "7.30",
       },
     },
-    {
-      id: "instant-noodles",
-      name: "Instant noodles 5-pack",
-      quantityInput: "1",
-      priceInputsByStoreId: {
-        "kedai-hijau": "5.50",
-        "pasar-jimat": "4.90",
-        "mart-setia": "",
-      },
-    },
   ],
-  extraStopCostInput: "1.00",
+  tripCosts: [
+    { storeIds: ["kedai-hijau"], costInput: "1.00" },
+    { storeIds: ["pasar-jimat"], costInput: "2.50" },
+    { storeIds: ["mart-setia"], costInput: "4.00" },
+    { storeIds: ["kedai-hijau", "pasar-jimat"], costInput: "3.00" },
+    { storeIds: ["kedai-hijau", "mart-setia"], costInput: "5.00" },
+    { storeIds: ["pasar-jimat", "mart-setia"], costInput: "4.50" },
+  ],
 };
 
 export function createSampleBasketDraft(): BasketDraft {
