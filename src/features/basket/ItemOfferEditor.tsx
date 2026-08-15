@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { formatRm, ITEM_PRICE_RANGE } from "../../domain";
 import type {
   BasketDraftErrors,
   EditableBasketItem,
@@ -257,7 +256,6 @@ export function ItemOfferEditor({
   onPriceBlur,
 }: ItemOfferEditorProps) {
   const canAdd = shops.length > 0 && items.length < 50;
-  const priceRangeHint = `Unit prices from ${formatRm(ITEM_PRICE_RANGE.minCents)} to ${formatRm(ITEM_PRICE_RANGE.maxCents)}.`;
 
   return (
     <section className="items-editor" aria-labelledby="item-editor-heading">
@@ -265,9 +263,8 @@ export function ItemOfferEditor({
         <div>
           <h2 id="item-editor-heading">Groceries and prices</h2>
           <p>
-            Enter quantity and unit price at each shop. Leave a price blank only
-            while you still need to type it — mark Unavailable when that shop
-            does not sell the item. {priceRangeHint}
+            Enter quantity and unit price at each shop, or mark Unavailable if
+            they don&apos;t sell it.
           </p>
         </div>
       </div>

@@ -1,4 +1,3 @@
-import { formatRm, TRIP_COST_RANGE } from "../../domain";
 import type { EditableShop, EditableTripCost } from "./basketDraft";
 
 interface TripCostEditorProps {
@@ -89,10 +88,8 @@ export function TripCostEditor({
       <div className="trip-cost__heading">
         <h2 id="trip-cost-heading">Travel costs</h2>
         <p id="trip-cost-help">
-          Estimate Grab, petrol, tolls or parking for each shopping plan. Use
-          what you would actually spend for that run — not a per-km formula.
-          Allowed range {formatRm(TRIP_COST_RANGE.minCents)}–
-          {formatRm(TRIP_COST_RANGE.maxCents)}.
+          Estimate Grab, petrol, tolls or parking for each plan — what you&apos;d
+          actually spend, not a per-km formula.
         </p>
       </div>
 
