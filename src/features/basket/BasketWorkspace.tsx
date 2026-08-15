@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, SetStateAction } from "react";
-import { createPortal } from "react-dom";
 import { motion } from "motion/react";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import {
   optimizeBasket,
   parseRmInput,
@@ -189,6 +189,12 @@ export function BasketWorkspace() {
   const [comparisonAttempted, setComparisonAttempted] = useState(false);
   const [stepAttempted, setStepAttempted] = useState(false);
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
+  const [pendingShopRemoval, setPendingShopRemoval] = useState<{
+    shopId: string;
+    shopName: string;
+    lostPrices: number;
+    lostTrips: number;
+  } | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   const [revealRequest, setRevealRequest] = useState(0);
   const [step, setStep] = useState<WizardStepIndex>(initial.step);
@@ -258,16 +264,7 @@ export function BasketWorkspace() {
     setComparisonAttempted(false);
   }
 
-  function removeShop(shopId: string) {
-    const hasOfferData = draft.items.some((item) => {
-      return Boolean(item.priceInputsByStoreId[shopId]?.trim());
-    });
-    if (
-      hasOfferData &&
-      !window.confirm("Remove this shop and discard its entered prices?")
-    ) {
-      return;
-    }
+  function commitRemoveShop(shopId: string) {
     updateDraft((current) => {
       const shops = current.shops.filter(({ id }) => id !== shopId);
       return {
@@ -282,6 +279,31 @@ export function BasketWorkspace() {
         }),
         tripCosts: reconcileTripCosts(shops, current.tripCosts),
       };
+    });
+  }
+
+  function removeShop(shopId: string) {
+    const shop = draft.shops.find(({ id }) => id === shopId);
+    const shopIndex = draft.shops.findIndex(({ id }) => id === shopId);
+    const shopName = shop?.name.trim() || `shop ${shopIndex + 1}`;
+    const lostPrices = draft.items.filter((item) =>
+      Boolean(item.priceInputsByStoreId[shopId]?.trim()),
+    ).length;
+    const lostTrips = draft.tripCosts.filter(
+      (trip) =>
+        trip.storeIds.includes(shopId) && Boolean(trip.costInput.trim()),
+    ).length;
+
+    if (lostPrices === 0 && lostTrips === 0) {
+      commitRemoveShop(shopId);
+      return;
+    }
+
+    setPendingShopRemoval({
+      shopId,
+      shopName,
+      lostPrices,
+      lostTrips,
     });
   }
 
@@ -532,60 +554,66 @@ export function BasketWorkspace() {
     </Fragment>
   );
 
-  const resetDialog =
-    showResetConfirmation && typeof document !== "undefined"
-      ? createPortal(
-          <div
-            className="reset-modal"
-            role="presentation"
-            onClick={(event) => {
-              if (event.target === event.currentTarget) {
-                setShowResetConfirmation(false);
-              }
-            }}
-          >
-            <div
-              className="reset-confirmation reset-confirmation--modal"
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="reset-heading"
-              aria-describedby="reset-description"
-            >
-              <div>
-                <h2 id="reset-heading">
-                  {draft.shops.length === 0 && draft.items.length === 0
-                    ? "Restore the example basket?"
-                    : "Clear this basket?"}
-                </h2>
-                <p id="reset-description">
-                  {draft.shops.length === 0 && draft.items.length === 0
-                    ? "This loads the demonstration shops, prices and trip costs."
-                    : "This removes all current shops, groceries, prices and trip estimates."}
-                </p>
-              </div>
-              <div className="reset-confirmation__actions">
-                <button
-                  className="button button--secondary"
-                  type="button"
-                  onClick={() => setShowResetConfirmation(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="button button--danger-solid"
-                  type="button"
-                  onClick={confirmReset}
-                >
-                  {draft.shops.length === 0 && draft.items.length === 0
-                    ? "Load example"
-                    : "Clear basket"}
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )
-      : null;
+  const restoringExample =
+    draft.shops.length === 0 && draft.items.length === 0;
+
+  function shopRemovalDescription(
+    shopName: string,
+    lostPrices: number,
+    lostTrips: number,
+  ): string {
+    const parts: string[] = [];
+    if (lostPrices > 0) {
+      parts.push(
+        `${lostPrices} price${lostPrices === 1 ? "" : "s"}`,
+      );
+    }
+    if (lostTrips > 0) {
+      parts.push(
+        `${lostTrips} trip cost${lostTrips === 1 ? "" : "s"}`,
+      );
+    }
+    return `Removing ${shopName} discards ${parts.join(" and ")}.`;
+  }
+
+  const confirmDialogs = (
+    <>
+      <ConfirmDialog
+        open={showResetConfirmation}
+        title={
+          restoringExample ? "Restore the example basket?" : "Clear this basket?"
+        }
+        description={
+          restoringExample
+            ? "This loads the demonstration shops, prices and trip costs."
+            : "This removes all current shops, groceries, prices and trip estimates."
+        }
+        confirmLabel={restoringExample ? "Load example" : "Clear basket"}
+        onConfirm={confirmReset}
+        onCancel={() => setShowResetConfirmation(false)}
+      />
+      <ConfirmDialog
+        open={pendingShopRemoval !== null}
+        title="Remove this shop?"
+        description={
+          pendingShopRemoval
+            ? shopRemovalDescription(
+                pendingShopRemoval.shopName,
+                pendingShopRemoval.lostPrices,
+                pendingShopRemoval.lostTrips,
+              )
+            : ""
+        }
+        confirmLabel="Remove shop"
+        onConfirm={() => {
+          if (!pendingShopRemoval) return;
+          commitRemoveShop(pendingShopRemoval.shopId);
+          setPendingShopRemoval(null);
+        }}
+        onCancel={() => setPendingShopRemoval(null)}
+      />
+    </>
+  );
 
   return (
     <div className="wizard">
@@ -782,7 +810,7 @@ export function BasketWorkspace() {
           </div>
         )}
       </motion.div>
-      {resetDialog}
+      {confirmDialogs}
     </div>
   );
 }
