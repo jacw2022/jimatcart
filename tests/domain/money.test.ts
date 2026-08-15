@@ -20,6 +20,11 @@ describe("parseRmInput", () => {
     ["0005.50", 550],
     ["  12.90  ", 1_290],
     ["9999.99", 999_999],
+    ["RM5.50", 550],
+    ["RM 5.00", 500],
+    ["1,000.00", 100_000],
+    ["1,200", 120_000],
+    ["1 200", 120_000],
   ])("parses %j into integer cents", (input, expectedCents) => {
     expect(parseRmInput(input)).toEqual({ ok: true, cents: expectedCents });
   });
@@ -30,13 +35,12 @@ describe("parseRmInput", () => {
     [".", "invalid-format"],
     ["5.", "invalid-format"],
     ["5.555", "invalid-format"],
-    ["RM5.50", "invalid-format"],
-    ["1,000.00", "invalid-format"],
     ["1e3", "invalid-format"],
     ["-5", "invalid-format"],
     ["+5", "invalid-format"],
     ["0x10", "invalid-format"],
     ["NaN", "invalid-format"],
+    ["abc", "invalid-format"],
   ])("rejects %j with %s", (input, expectedCode) => {
     const result = parseRmInput(input);
 
@@ -45,6 +49,30 @@ describe("parseRmInput", () => {
       expect(result.error.code).toBe(expectedCode);
       expect(result.error.message).not.toHaveLength(0);
     }
+  });
+
+  it("names the fault for residual invalid formats", () => {
+    expect(parseRmInput("5.555")).toMatchObject({
+      ok: false,
+      error: {
+        code: "invalid-format",
+        message: "Use at most two decimal places.",
+      },
+    });
+    expect(parseRmInput("-3")).toMatchObject({
+      ok: false,
+      error: {
+        code: "invalid-format",
+        message: "Enter a non-negative amount.",
+      },
+    });
+    expect(parseRmInput("RM xyz")).toMatchObject({
+      ok: false,
+      error: {
+        code: "invalid-format",
+        message: /letters/i,
+      },
+    });
   });
 
   it("reports an amount that cannot be represented safely", () => {
@@ -70,8 +98,8 @@ describe("field-specific money range validation", () => {
     },
   );
 
-  it("rejects item prices outside RM0.01–RM9,999.99", () => {
-    expect(validateItemPriceCents(0)).toMatchObject({
+  it("rejects item prices outside RM0.00–RM9,999.99", () => {
+    expect(validateItemPriceCents(-1)).toMatchObject({
       ok: false,
       error: { code: "below-minimum" },
     });
@@ -79,6 +107,10 @@ describe("field-specific money range validation", () => {
       ok: false,
       error: { code: "above-maximum" },
     });
+  });
+
+  it("accepts a free item price of RM0.00", () => {
+    expect(validateItemPriceCents(0)).toEqual({ ok: true, cents: 0 });
   });
 
   it.each([

@@ -1,7 +1,7 @@
 import type { MoneyCents } from "./types";
 
 export const ITEM_PRICE_RANGE = Object.freeze({
-  minCents: 1,
+  minCents: 0,
   maxCents: 999_999,
 });
 
@@ -71,6 +71,36 @@ function isSafeIntegerCents(value: number): boolean {
 }
 
 /**
+ * Strips common paste noise before parsing.
+ * Commas are treated as thousands separators only — en-MY amounts use `.`
+ * for decimals, so stripping commas must not be reused for locales that
+ * write `1,50` as one ringgit fifty sen.
+ */
+export function normaliseRmAmountInput(input: string): string {
+  return input
+    .trim()
+    .replace(/^RM\s*/i, "")
+    .replace(/[\s\u00a0]/g, "")
+    .replace(/,/g, "");
+}
+
+function invalidFormatMessage(normalised: string): string {
+  if (/[a-zA-Z]/.test(normalised)) {
+    return "Remove the letters and enter an amount in ringgit.";
+  }
+  if (normalised.includes("-")) {
+    return "Enter a non-negative amount.";
+  }
+  if (/\.\d{3,}/.test(normalised)) {
+    return "Use at most two decimal places.";
+  }
+  if (normalised.endsWith(".")) {
+    return "Finish the amount or remove the trailing decimal point.";
+  }
+  return "Use digits with no more than two decimal places.";
+}
+
+/**
  * Parses editable, non-negative RM text without using floating-point
  * multiplication. Syntax parsing is intentionally separate from field limits.
  */
@@ -87,14 +117,26 @@ export function parseRmInput(input: string): MoneyParseResult {
     };
   }
 
-  const match = editableRmPattern.exec(trimmedInput);
+  const normalised = normaliseRmAmountInput(trimmedInput);
+
+  if (normalised.length === 0) {
+    return {
+      ok: false,
+      error: {
+        code: "empty",
+        message: "Enter an amount.",
+      },
+    };
+  }
+
+  const match = editableRmPattern.exec(normalised);
 
   if (!match) {
     return {
       ok: false,
       error: {
         code: "invalid-format",
-        message: "Use digits with no more than two decimal places.",
+        message: invalidFormatMessage(normalised),
       },
     };
   }
