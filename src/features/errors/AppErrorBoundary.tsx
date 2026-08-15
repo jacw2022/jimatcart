@@ -1,5 +1,6 @@
 import { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
+import { BASKET_STORAGE_KEY } from "../../storage/basketStorage";
 
 interface Props {
   children: ReactNode;
@@ -17,20 +18,43 @@ export class AppErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    if (import.meta.env.DEV) {
-      console.error("JimatCart could not render", error, info);
-    }
+    console.error("JimatCart crashed", error, info);
   }
+
+  clearSavedBasketAndReload = () => {
+    try {
+      window.localStorage.removeItem(BASKET_STORAGE_KEY);
+    } catch {
+      // Ignore storage failures; reload still gives a clean boot path.
+    }
+    window.location.reload();
+  };
 
   render() {
     if (this.state.hasError) {
       return (
         <main className="fatal-error">
           <h1>JimatCart needs a fresh start</h1>
-          <p>Your saved basket is still on this device. Reload the page to try again.</p>
-          <button className="button button--primary" type="button" onClick={() => window.location.reload()}>
-            Reload JimatCart
-          </button>
+          <p>
+            Something went wrong. You can reload, or clear the saved basket if
+            the problem repeats.
+          </p>
+          <div className="fatal-error__actions">
+            <button
+              className="button button--primary"
+              type="button"
+              onClick={() => window.location.reload()}
+            >
+              Reload JimatCart
+            </button>
+            <button
+              className="button button--danger-solid"
+              type="button"
+              onClick={this.clearSavedBasketAndReload}
+            >
+              Clear saved basket and reload
+            </button>
+          </div>
         </main>
       );
     }
