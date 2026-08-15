@@ -1,0 +1,29 @@
+{
+  "name": "JimatCart",
+  "short_name": "JimatCart",
+  "description": "Compare a grocery basket across nearby shops and see if a second stop actually saves you money.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#e8f6ef",
+  "theme_color": "#0f3d2e",
+  "lang": "en-MY",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/jimatcart-mark.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
