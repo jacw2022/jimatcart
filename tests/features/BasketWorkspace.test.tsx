@@ -133,5 +133,6 @@ describe("BasketWorkspace", () => {
     compareExampleBasket();
     expect(await screen.findByText("What to buy where")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Basket comparison steps" })).toBeInTheDocument();
+    expect(screen.getByText(/Step 5 of 5 · Results/i)).toBeInTheDocument();
   });
 });
