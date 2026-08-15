@@ -183,6 +183,7 @@ function noPlan(explanation: string[]): Recommendation {
     breakEvenTripCostCents: null,
     twoStoreComparison: null,
     explanation,
+    reasons: [],
   };
 }
 
@@ -244,6 +245,13 @@ function inputProblem(input: BasketInput): string | null {
   return null;
 }
 
+function formatItemList(names: string[]): string {
+  if (names.length === 0) return "items";
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+}
+
 function explain(
   winner: CandidatePlan,
   bestSingle: number | null,
@@ -273,6 +281,87 @@ function explain(
     lines.push(`The compared two-shop plan is cheaper only while its combined trip costs less than ${formatRm(breakEven)}.`);
   }
   return lines;
+}
+
+/** Reasoning for the UI — avoids restating figures already shown in the cost summary. */
+function explainReasons(
+  input: BasketInput,
+  winner: CandidatePlan,
+  bestSingle: CandidatePlan | null,
+  bestPair: CandidatePlan | null,
+  saving: number | null,
+  breakEven: number | null,
+  comparedTrip: number | null,
+): string[] {
+  const itemNames = new Map(input.items.map((item) => [item.id, item.name]));
+  const reasons: string[] = [];
+
+  if (winner.stores.length === 2) {
+    const itemsByStore = new Map<string, string[]>();
+    for (const store of winner.stores) {
+      itemsByStore.set(store.name, []);
+    }
+    for (const assignment of winner.assignments) {
+      const store = winner.stores.find(({ id }) => id === assignment.storeId);
+      const itemName = itemNames.get(assignment.itemId);
+      if (!store || !itemName) continue;
+      itemsByStore.get(store.name)?.push(itemName);
+    }
+    const parts = [...itemsByStore.entries()]
+      .filter(([, items]) => items.length > 0)
+      .map(
+        ([storeName, items]) =>
+          `${storeName} is cheapest for ${formatItemList(items)}`,
+      );
+    if (parts.length > 0) {
+      reasons.push(`${parts.join("; ")}.`);
+    }
+
+    if (bestSingle && saving !== null && saving > 0) {
+      const grocerySaving =
+        bestSingle.grocerySubtotalCents - winner.grocerySubtotalCents;
+      if (grocerySaving > 0) {
+        reasons.push(
+          `Splitting costs ${formatRm(winner.travelCostCents)} in travel versus ${formatRm(bestSingle.travelCostCents)} for one shop — the ${formatRm(grocerySaving)} in grocery savings still comes out ahead.`,
+        );
+      }
+    }
+
+    if (bestSingle === null) {
+      reasons.push("No single shop covers every item, so splitting is required.");
+    } else if (breakEven !== null && breakEven > 0) {
+      reasons.push(
+        `Above ${formatRm(breakEven)} in combined trip cost, one shop would win.`,
+      );
+    }
+  } else {
+    reasons.push(
+      `One stop at ${winner.stores[0].name} covers the full basket at the lowest final total.`,
+    );
+    if (bestPair) {
+      const extra = bestPair.finalTotalCents - winner.finalTotalCents;
+      if (extra > 0) {
+        reasons.push(
+          `A split would cost ${formatRm(extra)} more after travel.`,
+        );
+      } else if (
+        breakEven !== null &&
+        breakEven > 0 &&
+        comparedTrip === breakEven
+      ) {
+        reasons.push(
+          `At ${formatRm(breakEven)} combined trip cost the totals tie, so JimatCart prefers one shop.`,
+        );
+      }
+    }
+    if (breakEven !== null && breakEven <= 0) {
+      reasons.push(
+        "No non-negative combined trip cost would make a two-shop plan cheaper.",
+      );
+    }
+  }
+
+  return reasons;
 }
 
 /** Enumerates every single shop and unique shop pair in O(items × shops²). */
@@ -332,6 +421,15 @@ export function optimizeBasket(input: BasketInput): Recommendation {
     explanation: explain(
       winner,
       bestSingleTotal,
+      netSaving,
+      breakEven,
+      twoStoreComparison?.travelCostCents ?? null,
+    ),
+    reasons: explainReasons(
+      input,
+      winner,
+      bestSingle,
+      bestPair,
       netSaving,
       breakEven,
       twoStoreComparison?.travelCostCents ?? null,

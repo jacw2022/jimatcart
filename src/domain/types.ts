@@ -48,5 +48,8 @@ export interface Recommendation {
   netSavingCents: MoneyCents | null;
   breakEvenTripCostCents: MoneyCents | null;
   twoStoreComparison: TwoStoreComparison | null;
+  /** Numeric / structural restatements — used in export and error paths. */
   explanation: string[];
+  /** Non-redundant reasoning for the Results “Why this plan won” list. */
+  reasons: string[];
 }

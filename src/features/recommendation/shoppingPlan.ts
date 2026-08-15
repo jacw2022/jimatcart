@@ -73,6 +73,16 @@ export function buildShoppingPlanText(
     `Estimated travel cost: ${formatRm(recommendation.travelCostCents)}`,
     `Final total: ${formatRm(recommendation.finalTotalCents)}`,
     ...comparisonLines(recommendation),
+  );
+
+  if (recommendation.reasons.length > 0) {
+    lines.push("", "Why this plan");
+    for (const reason of recommendation.reasons) {
+      lines.push(`- ${reason}`);
+    }
+  }
+
+  lines.push(
     "",
     "Prices and travel estimates were entered manually. Check current prices and availability before shopping.",
   );

@@ -30,6 +30,7 @@ describe("buildShoppingPlanText", () => {
     expect(text).toContain("Rice Premium: quantity 2 — RM24.00");
     expect(text).toContain("Estimated travel cost: RM1.00");
     expect(text).toContain("Final total: RM25.00");
+    expect(text).toContain("Why this plan");
     expect(text).toContain("Prices and travel estimates were entered manually");
     expect(text).not.toMatch(/Stop 1|rice\nPremium/);
   });

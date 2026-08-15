@@ -109,6 +109,22 @@ describe("optimizeBasket with basic quantities and unit prices", () => {
     expect(result.finalTotalCents).toBe(700);
     expect(result.breakEvenTripCostCents).toBe(500);
     expect(result.explanation.join(" ")).toMatch(/prefers fewer shops/i);
+    expect(result.reasons.join(" ")).toMatch(/prefers one shop/i);
+  });
+
+  it("gives non-empty UI reasons for a winning split", () => {
+    const result = optimizeBasket(
+      basket([
+        item("Rice", 1, { alpha: 100, bravo: 400 }),
+        item("Milk", 1, { alpha: 500, bravo: 100 }),
+      ]),
+    );
+
+    expect(result.status).toBe("success");
+    expect(result.storesUsed).toEqual(["alpha", "bravo"]);
+    expect(result.reasons.length).toBeGreaterThan(0);
+    expect(result.reasons.join(" ")).toMatch(/Alpha Mart is cheapest for Rice/i);
+    expect(result.reasons.join(" ")).toMatch(/Bravo Grocer is cheapest for Milk/i);
   });
 
   it("uses the actual single-shop travel cost when a nominal pair collapses", () => {
