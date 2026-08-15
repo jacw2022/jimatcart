@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { InteractiveBasket } from "./InteractiveBasket";
 
 interface WelcomeStepProps {
   onStart: () => void;
@@ -107,8 +108,9 @@ export function WelcomeStep({ onStart }: WelcomeStepProps) {
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.55, delay: 0.15, ease }}
-        aria-hidden="true"
-      />
+      >
+        <InteractiveBasket />
+      </motion.div>
     </section>
   );
 }
