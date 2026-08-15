@@ -43,6 +43,11 @@ interface InitialWorkspace {
   step: WizardStepIndex;
 }
 
+interface FieldErrorLink {
+  fieldId: string;
+  message: string;
+}
+
 let fallbackId = 0;
 
 function createId(prefix: "shop" | "item"): string {
@@ -75,19 +80,93 @@ function getInitialWorkspace(): InitialWorkspace {
   };
 }
 
-function countErrors(errors: BasketDraftResult["errors"]): number {
-  const priceErrorCount = Object.values(errors.prices).reduce(
-    (total, byShop) => total + Object.keys(byShop).length,
-    0,
-  );
+function shopFieldErrors(
+  draft: BasketDraft,
+  errors: BasketDraftResult["errors"],
+): FieldErrorLink[] {
+  return draft.shops.flatMap((shop, index) => {
+    const message = errors.shopNames[shop.id];
+    if (!message) return [];
+    const label = shop.name.trim() || `Shop ${index + 1}`;
+    return [{ fieldId: `${shop.id}-name`, message: `${label}: ${message}` }];
+  });
+}
+
+function itemFieldErrors(
+  draft: BasketDraft,
+  errors: BasketDraftResult["errors"],
+): FieldErrorLink[] {
+  const links: FieldErrorLink[] = [];
+  draft.items.forEach((item, index) => {
+    const itemName = item.name.trim() || `Item ${index + 1}`;
+    const nameError = errors.itemNames[item.id];
+    if (nameError) {
+      links.push({
+        fieldId: `${item.id}-name`,
+        message: `${itemName}: ${nameError}`,
+      });
+    }
+    const quantityError = errors.quantities[item.id];
+    if (quantityError) {
+      links.push({
+        fieldId: `${item.id}-qty`,
+        message: `${itemName} quantity: ${quantityError}`,
+      });
+    }
+    const availabilityError = errors.availability[item.id];
+    if (availabilityError) {
+      links.push({
+        fieldId: `${item.id}-name`,
+        message: `${itemName}: ${availabilityError}`,
+      });
+    }
+    draft.shops.forEach((shop) => {
+      const priceError = errors.prices[item.id]?.[shop.id];
+      if (!priceError) return;
+      const shopName = shop.name.trim() || "Unnamed shop";
+      links.push({
+        fieldId: `${item.id}-price-${shop.id}`,
+        message: `${itemName} at ${shopName}: ${priceError}`,
+      });
+    });
+  });
+  return links;
+}
+
+function tripFieldErrors(
+  draft: BasketDraft,
+  errors: BasketDraftResult["errors"],
+): FieldErrorLink[] {
+  return draft.tripCosts.flatMap((trip, index) => {
+    const message = errors.tripCosts[index];
+    if (!message) return [];
+    const route = trip.storeIds
+      .map((id) => {
+        const shop = draft.shops.find((candidate) => candidate.id === id);
+        return shop?.name.trim() || "Unnamed shop";
+      })
+      .join(" + ");
+    return [{ fieldId: `trip-cost-${index}`, message: `${route}: ${message}` }];
+  });
+}
+
+function StepErrorSummary({ errors }: { errors: FieldErrorLink[] }) {
+  if (errors.length === 0) return null;
+  const countLabel =
+    errors.length === 1
+      ? "1 field needs attention"
+      : `${errors.length} fields need attention`;
   return (
-    errors.general.length +
-    Object.keys(errors.shopNames).length +
-    Object.keys(errors.itemNames).length +
-    Object.keys(errors.quantities).length +
-    Object.keys(errors.availability).length +
-    Object.keys(errors.tripCosts).length +
-    priceErrorCount
+    <div className="comparison-error-summary" role="alert">
+      <strong>{countLabel}</strong>
+      <ul>
+        {errors.map((error) => (
+          <li key={`${error.fieldId}:${error.message}`}>
+            <a href={`#${error.fieldId}`}>{error.message}</a>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -115,13 +194,13 @@ export function BasketWorkspace() {
   const [step, setStep] = useState<WizardStepIndex>(initial.step);
   const [stepDirection, setStepDirection] = useState(1);
   const formRef = useRef<HTMLFormElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const draftResult = useMemo(() => toBasketInput(draft), [draft]);
   const recommendation = useMemo(
     () =>
       hasCompared && draftResult.ok ? optimizeBasket(draftResult.input) : null,
     [draftResult, hasCompared],
   );
-  const errorCount = countErrors(draftResult.errors);
   const maxReachable: WizardStepIndex =
     hasCompared && draftResult.ok ? 4 : (Math.min(step, 3) as WizardStepIndex);
 
@@ -130,6 +209,21 @@ export function BasketWorkspace() {
     setStep(next);
     setStepAttempted(false);
   }
+
+  useEffect(() => {
+    const reduce =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    try {
+      window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+    } catch {
+      // jsdom does not implement scrollTo
+    }
+    const frame = window.requestAnimationFrame(() => {
+      headingRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [step]);
 
   function updateDraft(update: SetStateAction<BasketDraft>) {
     setHasCompared(false);
@@ -280,7 +374,8 @@ export function BasketWorkspace() {
 
   function normalizePrice(itemId: string, shopId: string) {
     const value =
-      draft.items.find(({ id }) => id === itemId)?.priceInputsByStoreId[shopId] ?? "";
+      draft.items.find(({ id }) => id === itemId)?.priceInputsByStoreId[shopId] ??
+      "";
     if (!value.trim()) return;
     const normalized = normalizedMoney(value, validateItemPriceCents);
     if (normalized !== null && normalized !== value) {
@@ -306,13 +401,13 @@ export function BasketWorkspace() {
   }
 
   function focusFirstInvalid() {
-    queueMicrotask(() => {
+    window.setTimeout(() => {
       formRef.current
         ?.querySelector<HTMLElement>(
           '[aria-invalid="true"], button[data-empty-action="true"]',
         )
         ?.focus();
-    });
+    }, 0);
   }
 
   function advanceFromShops() {
@@ -349,7 +444,9 @@ export function BasketWorkspace() {
 
   function confirmReset() {
     const empty = draft.shops.length === 0 && draft.items.length === 0;
-    updateDraft(empty ? createSampleBasketDraft() : structuredClone(EMPTY_BASKET_DRAFT));
+    updateDraft(
+      empty ? createSampleBasketDraft() : structuredClone(EMPTY_BASKET_DRAFT),
+    );
     setComparisonAttempted(false);
     setShowResetConfirmation(false);
     setNotice(empty ? "Example basket loaded." : undefined);
@@ -357,6 +454,15 @@ export function BasketWorkspace() {
   }
 
   const showStepErrors = stepAttempted || comparisonAttempted;
+  const shopsErrors = shopFieldErrors(draft, draftResult.errors);
+  const itemsErrors = itemFieldErrors(draft, draftResult.errors);
+  const tripsErrors = [
+    ...tripFieldErrors(draft, draftResult.errors),
+    ...draftResult.errors.general.map((message) => ({
+      fieldId: "trips-heading",
+      message,
+    })),
+  ];
 
   const shopsHint =
     draft.shops.length === 0
@@ -446,11 +552,11 @@ export function BasketWorkspace() {
               aria-describedby="reset-description"
             >
               <div>
-                <h3 id="reset-heading">
+                <h2 id="reset-heading">
                   {draft.shops.length === 0 && draft.items.length === 0
                     ? "Restore the example basket?"
                     : "Clear this basket?"}
-                </h3>
+                </h2>
                 <p id="reset-description">
                   {draft.shops.length === 0 && draft.items.length === 0
                     ? "This loads the demonstration shops, prices and trip costs."
@@ -500,162 +606,181 @@ export function BasketWorkspace() {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.32, ease: stepEase }}
       >
-          {step === 0 && <WelcomeStep onStart={() => goToStep(1)} />}
+        {step === 0 && (
+          <WelcomeStep headingRef={headingRef} onStart={() => goToStep(1)} />
+        )}
 
-          {step === 1 && (
-            <form
-              ref={formRef}
-              className="wizard-panel"
-              onSubmit={(event) => {
-                event.preventDefault();
-                advanceFromShops();
-              }}
-              noValidate
+        {step === 1 && (
+          <form
+            ref={formRef}
+            className="wizard-panel"
+            onSubmit={(event) => {
+              event.preventDefault();
+              advanceFromShops();
+            }}
+            noValidate
+          >
+            <section
+              className="panel panel--workspace"
+              aria-labelledby="shops-heading"
             >
-              <section
-                className="panel panel--workspace"
-                aria-labelledby="shops-heading"
-              >
-                <div className="section-heading section-heading--with-action">
-                  <div>
-                    <h2 id="shops-heading">Where do you shop?</h2>
-                    <p>Add up to three nearby shops you might visit.</p>
-                  </div>
-                  {chromeTools}
+              <div className="section-heading section-heading--with-action">
+                <div>
+                  <h1
+                    ref={headingRef}
+                    id="shops-heading"
+                    className="step-heading"
+                    tabIndex={-1}
+                  >
+                    Where do you shop?
+                  </h1>
+                  <p>Add up to three nearby shops you might visit.</p>
                 </div>
-                {sharedNotices}
-                <ShopEditor
-                  shops={draft.shops}
-                  errors={draftResult.errors.shopNames}
-                  showErrors={showStepErrors}
-                  onAdd={addShop}
-                  onNameChange={updateShopName}
-                  onRemove={removeShop}
-                />
-                <WizardNav
-                  showBack
-                  onBack={() => goToStep(0)}
-                  primaryLabel="Next: Items"
-                  primaryType="submit"
-                  hint={shopsHint}
-                />
-              </section>
-            </form>
-          )}
-
-          {step === 2 && (
-            <form
-              ref={formRef}
-              className="wizard-panel"
-              onSubmit={(event) => {
-                event.preventDefault();
-                advanceFromItems();
-              }}
-              noValidate
-            >
-              <section
-                className="panel panel--workspace"
-                aria-labelledby="items-heading"
-              >
-                <div className="section-heading section-heading--with-action">
-                  <div>
-                    <h2 id="items-heading">What&apos;s in the basket?</h2>
-                    <p>
-                      Add each grocery with quantity and the unit price at every
-                      shop.
-                    </p>
-                  </div>
-                  {chromeTools}
-                </div>
-                {sharedNotices}
-                <ItemOfferEditor
-                  items={draft.items}
-                  shops={draft.shops}
-                  errors={draftResult.errors}
-                  showErrors={showStepErrors}
-                  onAdd={addItem}
-                  onRemove={(itemId) =>
-                    updateDraft((current) => ({
-                      ...current,
-                      items: current.items.filter(({ id }) => id !== itemId),
-                    }))
-                  }
-                  onItemChange={updateItem}
-                  onPriceChange={updatePrice}
-                  onUnavailableChange={updateUnavailable}
-                  onPriceBlur={normalizePrice}
-                />
-                <WizardNav
-                  showBack
-                  onBack={() => goToStep(1)}
-                  primaryLabel="Next: Trip costs"
-                  primaryType="submit"
-                  hint={itemsHint}
-                />
-              </section>
-            </form>
-          )}
-
-          {step === 3 && (
-            <form
-              ref={formRef}
-              className="wizard-panel"
-              onSubmit={compareBasket}
-              noValidate
-            >
-              <section
-                className="panel panel--workspace"
-                aria-labelledby="trips-heading"
-              >
-                <div className="section-heading section-heading--with-action">
-                  <div>
-                    <h2 id="trips-heading">How much to get there?</h2>
-                    <p>Add travel estimates for each shopping plan.</p>
-                  </div>
-                  {chromeTools}
-                </div>
-                {sharedNotices}
-                {comparisonAttempted && draftResult.errors.general.length > 0 && (
-                  <div className="comparison-error-summary" role="alert">
-                    <strong>Complete the basket before comparing.</strong>
-                    {draftResult.errors.general.map((message) => (
-                      <p key={message}>{message}</p>
-                    ))}
-                  </div>
-                )}
-                <TripCostEditor
-                  shops={draft.shops}
-                  tripCosts={draft.tripCosts}
-                  errors={draftResult.errors.tripCosts}
-                  showErrors={showStepErrors}
-                  onChange={updateTripCost}
-                  onBlur={normalizeTripCost}
-                />
-                <WizardNav
-                  showBack
-                  onBack={() => goToStep(2)}
-                  primaryLabel="Compare total costs"
-                  useCompareButton
-                  compareResetSignal={draft}
-                  hint={tripsHint}
-                />
-              </section>
-            </form>
-          )}
-
-          {step === 4 && (
-            <div className="wizard-panel wizard-panel--results">
-              <RecommendationView
-                input={hasCompared && draftResult.ok ? draftResult.input : null}
-                recommendation={recommendation}
-                revealRequest={revealRequest}
-                onEditBasket={() => goToStep(1)}
-                onStartOver={() => {
-                  setShowResetConfirmation(true);
-                }}
+                {chromeTools}
+              </div>
+              {sharedNotices}
+              {showStepErrors && <StepErrorSummary errors={shopsErrors} />}
+              <ShopEditor
+                shops={draft.shops}
+                errors={draftResult.errors.shopNames}
+                showErrors={showStepErrors}
+                onAdd={addShop}
+                onNameChange={updateShopName}
+                onRemove={removeShop}
               />
-            </div>
-          )}
+              <WizardNav
+                showBack
+                onBack={() => goToStep(0)}
+                primaryLabel="Next: Items"
+                primaryType="submit"
+                hint={shopsHint}
+              />
+            </section>
+          </form>
+        )}
+
+        {step === 2 && (
+          <form
+            ref={formRef}
+            className="wizard-panel"
+            onSubmit={(event) => {
+              event.preventDefault();
+              advanceFromItems();
+            }}
+            noValidate
+          >
+            <section
+              className="panel panel--workspace"
+              aria-labelledby="items-heading"
+            >
+              <div className="section-heading section-heading--with-action">
+                <div>
+                  <h1
+                    ref={headingRef}
+                    id="items-heading"
+                    className="step-heading"
+                    tabIndex={-1}
+                  >
+                    What&apos;s in the basket?
+                  </h1>
+                  <p>
+                    Add each grocery with quantity and the unit price at every
+                    shop.
+                  </p>
+                </div>
+                {chromeTools}
+              </div>
+              {sharedNotices}
+              {showStepErrors && <StepErrorSummary errors={itemsErrors} />}
+              <ItemOfferEditor
+                items={draft.items}
+                shops={draft.shops}
+                errors={draftResult.errors}
+                showErrors={showStepErrors}
+                onAdd={addItem}
+                onRemove={(itemId) =>
+                  updateDraft((current) => ({
+                    ...current,
+                    items: current.items.filter(({ id }) => id !== itemId),
+                  }))
+                }
+                onItemChange={updateItem}
+                onPriceChange={updatePrice}
+                onUnavailableChange={updateUnavailable}
+                onPriceBlur={normalizePrice}
+              />
+              <WizardNav
+                showBack
+                onBack={() => goToStep(1)}
+                primaryLabel="Next: Trip costs"
+                primaryType="submit"
+                hint={itemsHint}
+              />
+            </section>
+          </form>
+        )}
+
+        {step === 3 && (
+          <form
+            ref={formRef}
+            className="wizard-panel"
+            onSubmit={compareBasket}
+            noValidate
+          >
+            <section
+              className="panel panel--workspace"
+              aria-labelledby="trips-heading"
+            >
+              <div className="section-heading section-heading--with-action">
+                <div>
+                  <h1
+                    ref={headingRef}
+                    id="trips-heading"
+                    className="step-heading"
+                    tabIndex={-1}
+                  >
+                    How much to get there?
+                  </h1>
+                  <p>Add travel estimates for each shopping plan.</p>
+                </div>
+                {chromeTools}
+              </div>
+              {sharedNotices}
+              {showStepErrors && <StepErrorSummary errors={tripsErrors} />}
+              <TripCostEditor
+                shops={draft.shops}
+                tripCosts={draft.tripCosts}
+                errors={draftResult.errors.tripCosts}
+                showErrors={showStepErrors}
+                onChange={updateTripCost}
+                onBlur={normalizeTripCost}
+              />
+              <WizardNav
+                showBack
+                onBack={() => goToStep(2)}
+                primaryLabel="Compare total costs"
+                useCompareButton
+                compareResetSignal={draft}
+                hint={tripsHint}
+              />
+            </section>
+          </form>
+        )}
+
+        {step === 4 && (
+          <div className="wizard-panel wizard-panel--results">
+            <RecommendationView
+              input={hasCompared && draftResult.ok ? draftResult.input : null}
+              recommendation={recommendation}
+              revealRequest={revealRequest}
+              headingRef={headingRef}
+              onEditBasket={() => goToStep(1)}
+              onStartOver={() => {
+                setShowResetConfirmation(true);
+              }}
+            />
+          </div>
+        )}
       </motion.div>
       {resetDialog}
     </div>
