@@ -109,10 +109,22 @@ describe("BasketWorkspace", () => {
     render(<BasketWorkspace />);
     startWizard();
     fireEvent.click(screen.getByRole("button", { name: "Reset basket" }));
-    const dialog = screen.getByRole("alertdialog");
+    const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("heading", { name: "Clear this basket?" })).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("button", { name: "Clear basket" }));
     expect(screen.getByText("No shops added yet.")).toBeInTheDocument();
+  });
+
+  it("confirms shop removal through the shared dialog", () => {
+    render(<BasketWorkspace />);
+    startWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Remove Kedai Hijau" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Remove this shop?" })).toBeInTheDocument();
+    expect(within(dialog).getByText(/discards/i)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("Kedai Hijau")).toBeInTheDocument();
   });
 
   it("walks through each wizard step to results", async () => {
