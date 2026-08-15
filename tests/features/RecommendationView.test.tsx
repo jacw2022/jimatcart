@@ -43,19 +43,44 @@ describe("RecommendationView", () => {
     const basket = input();
     render(<RecommendationView input={basket} recommendation={optimizeBasket(basket)} />);
 
-    expect(screen.getByRole("heading", { name: /Split between Alpha Mart and Bravo Grocer/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /Lowest-cost option: Alpha Mart \+ Bravo Grocer/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Save RM3\.00/i).length).toBeGreaterThan(0);
     const alpha = screen.getByRole("region", { name: "Alpha Mart" });
-    expect(within(alpha).getByText("Quantity 2")).toBeInTheDocument();
-    expect(screen.getByText("Grocery checkout").nextElementSibling).toHaveTextContent("RM32.00");
-    expect(screen.getByText("Estimated travel").nextElementSibling).toHaveTextContent("RM3.00");
-    expect(screen.getByText(/Break-even combined-trip cost: RM6.00/)).toBeInTheDocument();
+    expect(within(alpha).getByText("Qty 2")).toBeInTheDocument();
+    expect(screen.getByText("Final total")).toBeInTheDocument();
+    expect(screen.getByText(/Groceries RM32\.00 \+ Travel RM3\.00/)).toBeInTheDocument();
+    expect(screen.getByText("Net saving").nextElementSibling).toHaveTextContent("RM3.00");
+    fireEvent.click(screen.getByText("Break-even details"));
+    expect(screen.getByText(/Break-even combined-trip cost:/)).toBeInTheDocument();
+    expect(screen.getByText("RM6.00")).toBeInTheDocument();
+    expect(screen.getByText(/Below this amount, the pair is cheaper/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/At the exact amount, JimatCart chooses one shop/i),
+    ).toBeInTheDocument();
+  });
+
+  it("frames tiny two-shop savings as a practical tradeoff", () => {
+    const basket = input(590);
+    render(<RecommendationView input={basket} recommendation={optimizeBasket(basket)} />);
+    expect(
+      screen.getAllByText(/Only RM0\.10 cheaper than one shop after travel/i).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/second stop may not be worth it/i).length,
+    ).toBeGreaterThan(0);
   });
 
   it("explains the exact break-even tie", () => {
     const basket = input(600);
     render(<RecommendationView input={basket} recommendation={optimizeBasket(basket)} />);
-    expect(screen.getByRole("heading", { name: /One shop costs the same/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/prefers fewer shops/i)).not.toHaveLength(0);
+    expect(
+      screen.getByRole("heading", { name: /Lowest-cost option:/i }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Totals tie with a split plan/i).length).toBeGreaterThan(0);
   });
 
   it("copies and downloads the same current plan", async () => {
@@ -71,11 +96,11 @@ describe("RecommendationView", () => {
     Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectURL });
 
     render(<RecommendationView input={basket} recommendation={recommendation} />);
-    fireEvent.click(screen.getByRole("button", { name: "Copy shopping plan" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy plan" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(expected));
     expect(screen.getByText("Saved to clipboard.")).toHaveAttribute("role", "status");
 
-    fireEvent.click(screen.getByRole("button", { name: "Download shopping plan" }));
+    fireEvent.click(screen.getByRole("button", { name: "Download plan" }));
     expect(await createObjectURL.mock.calls[0][0].text()).toBe(expected);
     expect(click).toHaveBeenCalledOnce();
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:plan");
@@ -88,7 +113,7 @@ describe("RecommendationView", () => {
       value: { writeText: vi.fn().mockRejectedValue(new DOMException("Denied")) },
     });
     render(<RecommendationView input={basket} recommendation={optimizeBasket(basket)} />);
-    fireEvent.click(screen.getByRole("button", { name: "Copy shopping plan" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy plan" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/Could not copy/i);
   });
 });
