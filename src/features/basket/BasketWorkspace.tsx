@@ -202,6 +202,10 @@ export function BasketWorkspace() {
   const [stepDirection, setStepDirection] = useState(1);
   const formRef = useRef<HTMLFormElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const draftRef = useRef(draft);
+  const hasComparedRef = useRef(hasCompared);
+  draftRef.current = draft;
+  hasComparedRef.current = hasCompared;
   const draftResult = useMemo(() => toBasketInput(draft), [draft]);
   const recommendation = useMemo(
     () =>
@@ -252,8 +256,20 @@ export function BasketWorkspace() {
   }
 
   useEffect(() => {
-    setSaveFailed(!saveWorkspace(draft, hasCompared));
+    const timer = window.setTimeout(() => {
+      setSaveFailed(!saveWorkspace(draft, hasCompared));
+    }, 400);
+    return () => window.clearTimeout(timer);
   }, [draft, hasCompared]);
+
+  useEffect(() => {
+    function flushIfHidden() {
+      if (document.visibilityState !== "hidden") return;
+      saveWorkspace(draftRef.current, hasComparedRef.current);
+    }
+    document.addEventListener("visibilitychange", flushIfHidden);
+    return () => document.removeEventListener("visibilitychange", flushIfHidden);
+  }, []);
 
   function addShop() {
     if (draft.shops.length >= 3) return;
