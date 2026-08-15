@@ -52,9 +52,13 @@ export function WizardProgress({
   maxReachable,
 }: WizardProgressProps) {
   const total = WIZARD_STEPS.length;
+  const currentLabel = WIZARD_STEPS[current]?.label ?? "Step";
 
   return (
     <nav className="wizard-progress" aria-label="Basket comparison steps">
+      <p className="wizard-progress__status">
+        Step {current + 1} of {total} · {currentLabel}
+      </p>
       <ol className="wizard-progress__list">
         {WIZARD_STEPS.map((step, index) => {
           const stepIndex = index as WizardStepIndex;
