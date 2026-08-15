@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import type { ButtonHTMLAttributes, MouseEvent } from "react";
 
@@ -60,7 +60,7 @@ export function StatefulButton({
         : children;
 
   return (
-    <motion.button
+    <m.button
       layout
       className={`button stateful-button ${className}`.trim()}
       aria-label={accessibleLabel}
@@ -71,7 +71,7 @@ export function StatefulButton({
     >
       <AnimatePresence initial={false} mode="popLayout">
         {state === "loading" && (
-          <motion.svg
+          <m.svg
             className="stateful-button__loader"
             key="loader"
             viewBox="0 0 24 24"
@@ -85,10 +85,10 @@ export function StatefulButton({
             aria-hidden="true"
           >
             <path d="M12 3a9 9 0 1 0 9 9" />
-          </motion.svg>
+          </m.svg>
         )}
         {state === "success" && (
-          <motion.svg
+          <m.svg
             className="stateful-button__check"
             key="check"
             viewBox="0 0 24 24"
@@ -104,16 +104,16 @@ export function StatefulButton({
           >
             <circle cx="12" cy="12" r="9" />
             <path d="m8.5 12 2.2 2.2 4.8-5" />
-          </motion.svg>
+          </m.svg>
         )}
       </AnimatePresence>
-      <motion.span layout>
+      <m.span layout>
         {state === "loading"
           ? "Comparing…"
           : state === "success"
             ? "Compared"
             : children}
-      </motion.span>
-    </motion.button>
+      </m.span>
+    </m.button>
   );
 }

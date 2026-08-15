@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, SetStateAction } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import {
   optimizeBasket,
@@ -659,7 +659,7 @@ export function BasketWorkspace() {
         />
       )}
 
-      <motion.div
+      <m.div
         key={step}
         className="wizard__stage"
         initial={{ opacity: 0, x: stepDirection * 36 }}
@@ -845,7 +845,7 @@ export function BasketWorkspace() {
             />
           </div>
         )}
-      </motion.div>
+      </m.div>
       {confirmDialogs}
     </div>
   );

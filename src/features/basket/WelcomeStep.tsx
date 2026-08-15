@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import type { Ref } from "react";
 import { InteractiveBasket } from "./InteractiveBasket";
 
@@ -57,15 +57,15 @@ export function WelcomeStep({ onStart, headingRef }: WelcomeStepProps) {
   return (
     <section className="welcome-step" aria-labelledby="welcome-heading">
       <div className="welcome-step__copy">
-        <motion.p
+        <m.p
           className="welcome-step__eyebrow"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease }}
         >
           Smarter grocery trips
-        </motion.p>
-        <motion.h1
+        </m.p>
+        <m.h1
           ref={headingRef}
           id="welcome-heading"
           className="step-heading"
@@ -75,8 +75,8 @@ export function WelcomeStep({ onStart, headingRef }: WelcomeStepProps) {
           transition={{ duration: 0.5, delay: 0.05, ease }}
         >
           Make every ringgit count.
-        </motion.h1>
-        <motion.p
+        </m.h1>
+        <m.p
           className="welcome-step__pitch"
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -84,8 +84,8 @@ export function WelcomeStep({ onStart, headingRef }: WelcomeStepProps) {
         >
           See if a second stop saves you money — shops, prices, and trip costs
           in a few playful steps.
-        </motion.p>
-        <motion.div
+        </m.p>
+        <m.div
           className="welcome-step__actions"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -105,17 +105,17 @@ export function WelcomeStep({ onStart, headingRef }: WelcomeStepProps) {
             <CheckIcon />
             <span>Clear totals. No hidden maths.</span>
           </p>
-        </motion.div>
+        </m.div>
       </div>
 
-      <motion.div
+      <m.div
         className="welcome-step__visual"
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.55, delay: 0.15, ease }}
       >
         <InteractiveBasket />
-      </motion.div>
+      </m.div>
     </section>
   );
 }
