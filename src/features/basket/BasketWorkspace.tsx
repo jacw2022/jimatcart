@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, SetStateAction } from "react";
-import { StatefulButton } from "../../components/ui/StatefulButton";
+import { createPortal } from "react-dom";
+import { motion } from "motion/react";
 import {
   optimizeBasket,
   parseRmInput,
@@ -12,6 +13,9 @@ import { RecommendationView } from "../recommendation/RecommendationView";
 import { ItemOfferEditor } from "./ItemOfferEditor";
 import { ShopEditor } from "./ShopEditor";
 import { TripCostEditor } from "./TripCostEditor";
+import { WelcomeStep } from "./WelcomeStep";
+import { WizardNav } from "./WizardNav";
+import { WizardProgress } from "./WizardProgress";
 import {
   EMPTY_BASKET_DRAFT,
   reconcileTripCosts,
@@ -23,10 +27,20 @@ import type {
   EditableBasketItem,
 } from "./basketDraft";
 import { createSampleBasketDraft } from "./sampleBasket";
+import {
+  canAdvanceFromItems,
+  canAdvanceFromShops,
+  canAdvanceFromTrips,
+  formatItemsStatusHint,
+  formatTripsStatusHint,
+  type WizardStepIndex,
+} from "./wizardSteps";
 
 interface InitialWorkspace {
   draft: BasketDraft;
   notice?: string;
+  hasCompared: boolean;
+  step: WizardStepIndex;
 }
 
 let fallbackId = 0;
@@ -41,9 +55,19 @@ function createId(prefix: "shop" | "item"): string {
 
 function getInitialWorkspace(): InitialWorkspace {
   const saved = loadWorkspace();
-  if (saved.status === "restored") return { draft: saved.draft };
+  if (saved.status === "restored") {
+    const draftResult = toBasketInput(saved.draft);
+    const landOnResults = saved.hasCompared && draftResult.ok;
+    return {
+      draft: saved.draft,
+      hasCompared: landOnResults,
+      step: landOnResults ? 4 : 0,
+    };
+  }
   return {
     draft: createSampleBasketDraft(),
+    hasCompared: false,
+    step: 0,
     notice:
       saved.status === "invalid"
         ? "Saved basket data was incompatible, so a fresh example basket was loaded."
@@ -76,15 +100,20 @@ function normalizedMoney(
   return `${Math.floor(parsed.cents / 100)}.${String(parsed.cents % 100).padStart(2, "0")}`;
 }
 
+const stepEase = [0.22, 1, 0.36, 1] as const;
+
 export function BasketWorkspace() {
   const initial = useMemo(getInitialWorkspace, []);
   const [draft, setDraft] = useState(initial.draft);
   const [notice, setNotice] = useState(initial.notice);
-  const [hasCompared, setHasCompared] = useState(false);
+  const [hasCompared, setHasCompared] = useState(initial.hasCompared);
   const [comparisonAttempted, setComparisonAttempted] = useState(false);
+  const [stepAttempted, setStepAttempted] = useState(false);
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const [revealRequest, setRevealRequest] = useState(0);
+  const [step, setStep] = useState<WizardStepIndex>(initial.step);
+  const [stepDirection, setStepDirection] = useState(1);
   const formRef = useRef<HTMLFormElement>(null);
   const draftResult = useMemo(() => toBasketInput(draft), [draft]);
   const recommendation = useMemo(
@@ -93,6 +122,14 @@ export function BasketWorkspace() {
     [draftResult, hasCompared],
   );
   const errorCount = countErrors(draftResult.errors);
+  const maxReachable: WizardStepIndex =
+    hasCompared && draftResult.ok ? 4 : (Math.min(step, 3) as WizardStepIndex);
+
+  function goToStep(next: WizardStepIndex) {
+    setStepDirection(next > step ? 1 : -1);
+    setStep(next);
+    setStepAttempted(false);
+  }
 
   function updateDraft(update: SetStateAction<BasketDraft>) {
     setHasCompared(false);
@@ -116,6 +153,9 @@ export function BasketWorkspace() {
           priceInputsByStoreId: {
             ...item.priceInputsByStoreId,
             [id]: "",
+          },
+          unavailableByStoreId: {
+            ...item.unavailableByStoreId,
           },
         })),
         tripCosts: reconcileTripCosts(shops, current.tripCosts),
@@ -141,8 +181,10 @@ export function BasketWorkspace() {
         shops,
         items: current.items.map((item) => {
           const priceInputsByStoreId = { ...item.priceInputsByStoreId };
+          const unavailableByStoreId = { ...item.unavailableByStoreId };
           delete priceInputsByStoreId[shopId];
-          return { ...item, priceInputsByStoreId };
+          delete unavailableByStoreId[shopId];
+          return { ...item, priceInputsByStoreId, unavailableByStoreId };
         }),
         tripCosts: reconcileTripCosts(shops, current.tripCosts),
       };
@@ -172,6 +214,7 @@ export function BasketWorkspace() {
           priceInputsByStoreId: Object.fromEntries(
             current.shops.map((shop) => [shop.id, ""]),
           ),
+          unavailableByStoreId: {},
         },
       ],
     }));
@@ -197,17 +240,41 @@ export function BasketWorkspace() {
   ) {
     updateDraft((current) => ({
       ...current,
-      items: current.items.map((item) =>
-        item.id === itemId
-          ? {
-              ...item,
-              priceInputsByStoreId: {
-                ...item.priceInputsByStoreId,
-                [shopId]: value,
-              },
-            }
-          : item,
-      ),
+      items: current.items.map((item) => {
+        if (item.id !== itemId) return item;
+        const unavailableByStoreId = { ...item.unavailableByStoreId };
+        if (value.trim()) delete unavailableByStoreId[shopId];
+        return {
+          ...item,
+          priceInputsByStoreId: {
+            ...item.priceInputsByStoreId,
+            [shopId]: value,
+          },
+          unavailableByStoreId,
+        };
+      }),
+    }));
+  }
+
+  function updateUnavailable(
+    itemId: string,
+    shopId: string,
+    unavailable: boolean,
+  ) {
+    updateDraft((current) => ({
+      ...current,
+      items: current.items.map((item) => {
+        if (item.id !== itemId) return item;
+        const unavailableByStoreId = { ...item.unavailableByStoreId };
+        const priceInputsByStoreId = { ...item.priceInputsByStoreId };
+        if (unavailable) {
+          unavailableByStoreId[shopId] = true;
+          priceInputsByStoreId[shopId] = "";
+        } else {
+          delete unavailableByStoreId[shopId];
+        }
+        return { ...item, unavailableByStoreId, priceInputsByStoreId };
+      }),
     }));
   }
 
@@ -238,22 +305,46 @@ export function BasketWorkspace() {
     }
   }
 
+  function focusFirstInvalid() {
+    queueMicrotask(() => {
+      formRef.current
+        ?.querySelector<HTMLElement>(
+          '[aria-invalid="true"], button[data-empty-action="true"]',
+        )
+        ?.focus();
+    });
+  }
+
+  function advanceFromShops() {
+    setStepAttempted(true);
+    if (!canAdvanceFromShops(draft, draftResult.errors)) {
+      focusFirstInvalid();
+      return;
+    }
+    goToStep(2);
+  }
+
+  function advanceFromItems() {
+    setStepAttempted(true);
+    if (!canAdvanceFromItems(draft, draftResult.errors)) {
+      focusFirstInvalid();
+      return;
+    }
+    goToStep(3);
+  }
+
   function compareBasket(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setComparisonAttempted(true);
-    if (!draftResult.ok) {
+    setStepAttempted(true);
+    if (!canAdvanceFromTrips(draftResult.ok) || !draftResult.ok) {
       setHasCompared(false);
-      queueMicrotask(() => {
-        formRef.current
-          ?.querySelector<HTMLElement>(
-            '[aria-invalid="true"], button[data-empty-action="true"]',
-          )
-          ?.focus();
-      });
+      focusFirstInvalid();
       return;
     }
     setHasCompared(true);
     setRevealRequest((current) => current + 1);
+    goToStep(4);
   }
 
   function confirmReset() {
@@ -262,77 +353,95 @@ export function BasketWorkspace() {
     setComparisonAttempted(false);
     setShowResetConfirmation(false);
     setNotice(empty ? "Example basket loaded." : undefined);
+    goToStep(1);
   }
 
-  const readinessMessage =
+  const showStepErrors = stepAttempted || comparisonAttempted;
+
+  const shopsHint =
     draft.shops.length === 0
-      ? "Add your first shop to begin."
-      : draft.items.length === 0
-        ? "Add at least one grocery item."
-        : draftResult.ok
-          ? "Your basket is ready to compare."
-          : comparisonAttempted
-            ? `Fix ${errorCount} ${errorCount === 1 ? "field" : "fields"} before comparing.`
-            : "Complete the quantities, prices and trip estimates.";
+      ? "Add your first shop to continue."
+      : !canAdvanceFromShops(draft, draftResult.errors)
+        ? stepAttempted
+          ? "Fix shop names before continuing."
+          : "Name each shop to continue."
+        : "Looking good — next, add groceries.";
 
-  return (
+  const itemsHint = formatItemsStatusHint(
+    draft,
+    draftResult.errors,
+    stepAttempted,
+  );
+
+  const tripsHint = formatTripsStatusHint(
+    draft,
+    draftResult.errors,
+    draftResult.ok,
+    stepAttempted || comparisonAttempted,
+  );
+
+  const chromeTools = step > 0 && step < 4 && (
+    <div className="workspace-tools">
+      {saveFailed && (
+        <span className="saved-note saved-note--warning">
+          Could not save on this device.
+        </span>
+      )}
+      <button
+        className="button button--reset button--reset-quiet"
+        type="button"
+        onClick={() => setShowResetConfirmation(true)}
+      >
+        Reset basket
+      </button>
+    </div>
+  );
+
+  const sharedNotices = (
     <Fragment>
-      <form ref={formRef} onSubmit={compareBasket} noValidate>
-        <section className="panel panel--workspace" aria-labelledby="basket-heading">
-          <div className="section-heading section-heading--with-action">
-            <div>
-              <p className="step-label">Step 1</p>
-              <h2 id="basket-heading">Build your basket</h2>
-              <p>
-                Add each quantity and unit price, then include the full travel
-                cost for each possible shopping plan.
-              </p>
-            </div>
-            <div className="workspace-tools">
-              {saveFailed && (
-                <span className="saved-note saved-note--warning">
-                  Could not save on this device.
-                </span>
-              )}
-              <button
-                className="button button--reset"
-                type="button"
-                onClick={() => setShowResetConfirmation(true)}
-              >
-                Reset basket
-              </button>
-            </div>
+      {notice && step > 0 && step < 4 && (
+        <div className="storage-notice" role="status">
+          <p>{notice}</p>
+          <div>
+            <button
+              type="button"
+              className="button button--text"
+              onClick={() => {
+                updateDraft(structuredClone(EMPTY_BASKET_DRAFT));
+                setNotice(undefined);
+              }}
+            >
+              Start empty
+            </button>
+            <button
+              type="button"
+              className="button button--text"
+              onClick={() => setNotice(undefined)}
+            >
+              Keep example
+            </button>
           </div>
+        </div>
+      )}
+    </Fragment>
+  );
 
-          {notice && (
-            <div className="storage-notice" role="status">
-              <p>{notice}</p>
-              <div>
-                <button
-                  type="button"
-                  className="button button--text"
-                  onClick={() => {
-                    updateDraft(structuredClone(EMPTY_BASKET_DRAFT));
-                    setNotice(undefined);
-                  }}
-                >
-                  Start empty
-                </button>
-                <button
-                  type="button"
-                  className="button button--text"
-                  onClick={() => setNotice(undefined)}
-                >
-                  Keep example
-                </button>
-              </div>
-            </div>
-          )}
-
-          {showResetConfirmation && (
+  const resetDialog =
+    showResetConfirmation && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="reset-modal"
+            role="presentation"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setShowResetConfirmation(false);
+              }
+            }}
+          >
             <div
-              className="reset-confirmation"
+              className="reset-confirmation reset-confirmation--modal"
               role="alertdialog"
+              aria-modal="true"
               aria-labelledby="reset-heading"
               aria-describedby="reset-description"
             >
@@ -357,7 +466,7 @@ export function BasketWorkspace() {
                   Cancel
                 </button>
                 <button
-                  className="button button--danger"
+                  className="button button--danger-solid"
                   type="button"
                   onClick={confirmReset}
                 >
@@ -367,74 +476,188 @@ export function BasketWorkspace() {
                 </button>
               </div>
             </div>
-          )}
+          </div>,
+          document.body,
+        )
+      : null;
 
-          {comparisonAttempted && draftResult.errors.general.length > 0 && (
-            <div className="comparison-error-summary" role="alert">
-              <strong>Complete the basket before comparing.</strong>
-              {draftResult.errors.general.map((message) => (
-                <p key={message}>{message}</p>
-              ))}
-            </div>
-          )}
+  return (
+    <div className="wizard">
+      {step > 0 && (
+        <WizardProgress
+          current={step}
+          maxReachable={maxReachable}
+          onJump={(next) => {
+            if (next <= maxReachable) goToStep(next);
+          }}
+        />
+      )}
 
-          <ShopEditor
-            shops={draft.shops}
-            errors={draftResult.errors.shopNames}
-            showErrors={comparisonAttempted}
-            onAdd={addShop}
-            onNameChange={updateShopName}
-            onRemove={removeShop}
-          />
-          <ItemOfferEditor
-            items={draft.items}
-            shops={draft.shops}
-            errors={draftResult.errors}
-            showErrors={comparisonAttempted}
-            onAdd={addItem}
-            onRemove={(itemId) =>
-              updateDraft((current) => ({
-                ...current,
-                items: current.items.filter(({ id }) => id !== itemId),
-              }))
-            }
-            onItemChange={updateItem}
-            onPriceChange={updatePrice}
-            onPriceBlur={normalizePrice}
-          />
-          <TripCostEditor
-            shops={draft.shops}
-            tripCosts={draft.tripCosts}
-            errors={draftResult.errors.tripCosts}
-            showErrors={comparisonAttempted}
-            onChange={updateTripCost}
-            onBlur={normalizeTripCost}
-          />
+      <motion.div
+        key={step}
+        className="wizard__stage"
+        initial={{ opacity: 0, x: stepDirection * 36 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.32, ease: stepEase }}
+      >
+          {step === 0 && <WelcomeStep onStart={() => goToStep(1)} />}
 
-          <div className="readiness" aria-live="polite">
-            <span className="readiness__dot" aria-hidden="true" />
-            <p>{readinessMessage}</p>
-          </div>
-          <div className="compare-action">
-            <div>
-              <strong>Ready to check the real saving?</strong>
-              <span>Totals include item quantities, unit prices and travel.</span>
-            </div>
-            <StatefulButton
-              className="button--primary button--compare"
-              resetSignal={draft}
-              type="submit"
+          {step === 1 && (
+            <form
+              ref={formRef}
+              className="wizard-panel"
+              onSubmit={(event) => {
+                event.preventDefault();
+                advanceFromShops();
+              }}
+              noValidate
             >
-              Compare my basket
-            </StatefulButton>
-          </div>
-        </section>
-      </form>
-      <RecommendationView
-        input={hasCompared && draftResult.ok ? draftResult.input : null}
-        recommendation={recommendation}
-        revealRequest={revealRequest}
-      />
-    </Fragment>
+              <section
+                className="panel panel--workspace"
+                aria-labelledby="shops-heading"
+              >
+                <div className="section-heading section-heading--with-action">
+                  <div>
+                    <h2 id="shops-heading">Where do you shop?</h2>
+                    <p>Add up to three nearby shops you might visit.</p>
+                  </div>
+                  {chromeTools}
+                </div>
+                {sharedNotices}
+                <ShopEditor
+                  shops={draft.shops}
+                  errors={draftResult.errors.shopNames}
+                  showErrors={showStepErrors}
+                  onAdd={addShop}
+                  onNameChange={updateShopName}
+                  onRemove={removeShop}
+                />
+                <WizardNav
+                  showBack
+                  onBack={() => goToStep(0)}
+                  primaryLabel="Next: Items"
+                  primaryType="submit"
+                  hint={shopsHint}
+                />
+              </section>
+            </form>
+          )}
+
+          {step === 2 && (
+            <form
+              ref={formRef}
+              className="wizard-panel"
+              onSubmit={(event) => {
+                event.preventDefault();
+                advanceFromItems();
+              }}
+              noValidate
+            >
+              <section
+                className="panel panel--workspace"
+                aria-labelledby="items-heading"
+              >
+                <div className="section-heading section-heading--with-action">
+                  <div>
+                    <h2 id="items-heading">What&apos;s in the basket?</h2>
+                    <p>
+                      Add each grocery with quantity and the unit price at every
+                      shop.
+                    </p>
+                  </div>
+                  {chromeTools}
+                </div>
+                {sharedNotices}
+                <ItemOfferEditor
+                  items={draft.items}
+                  shops={draft.shops}
+                  errors={draftResult.errors}
+                  showErrors={showStepErrors}
+                  onAdd={addItem}
+                  onRemove={(itemId) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      items: current.items.filter(({ id }) => id !== itemId),
+                    }))
+                  }
+                  onItemChange={updateItem}
+                  onPriceChange={updatePrice}
+                  onUnavailableChange={updateUnavailable}
+                  onPriceBlur={normalizePrice}
+                />
+                <WizardNav
+                  showBack
+                  onBack={() => goToStep(1)}
+                  primaryLabel="Next: Trip costs"
+                  primaryType="submit"
+                  hint={itemsHint}
+                />
+              </section>
+            </form>
+          )}
+
+          {step === 3 && (
+            <form
+              ref={formRef}
+              className="wizard-panel"
+              onSubmit={compareBasket}
+              noValidate
+            >
+              <section
+                className="panel panel--workspace"
+                aria-labelledby="trips-heading"
+              >
+                <div className="section-heading section-heading--with-action">
+                  <div>
+                    <h2 id="trips-heading">How much to get there?</h2>
+                    <p>Add travel estimates for each shopping plan.</p>
+                  </div>
+                  {chromeTools}
+                </div>
+                {sharedNotices}
+                {comparisonAttempted && draftResult.errors.general.length > 0 && (
+                  <div className="comparison-error-summary" role="alert">
+                    <strong>Complete the basket before comparing.</strong>
+                    {draftResult.errors.general.map((message) => (
+                      <p key={message}>{message}</p>
+                    ))}
+                  </div>
+                )}
+                <TripCostEditor
+                  shops={draft.shops}
+                  tripCosts={draft.tripCosts}
+                  errors={draftResult.errors.tripCosts}
+                  showErrors={showStepErrors}
+                  onChange={updateTripCost}
+                  onBlur={normalizeTripCost}
+                />
+                <WizardNav
+                  showBack
+                  onBack={() => goToStep(2)}
+                  primaryLabel="Compare total costs"
+                  useCompareButton
+                  compareResetSignal={draft}
+                  hint={tripsHint}
+                />
+              </section>
+            </form>
+          )}
+
+          {step === 4 && (
+            <div className="wizard-panel wizard-panel--results">
+              <RecommendationView
+                input={hasCompared && draftResult.ok ? draftResult.input : null}
+                recommendation={recommendation}
+                revealRequest={revealRequest}
+                onEditBasket={() => goToStep(1)}
+                onStartOver={() => {
+                  setShowResetConfirmation(true);
+                }}
+              />
+            </div>
+          )}
+      </motion.div>
+      {resetDialog}
+    </div>
   );
 }
