@@ -16,6 +16,7 @@ export const SAMPLE_BASKET_DRAFT: BasketDraft = {
         "pasar-jimat": "19.50",
         "mart-setia": "20.20",
       },
+      unavailableByStoreId: {},
     },
     {
       id: "cooking-oil",
@@ -26,6 +27,7 @@ export const SAMPLE_BASKET_DRAFT: BasketDraft = {
         "pasar-jimat": "7.10",
         "mart-setia": "7.60",
       },
+      unavailableByStoreId: {},
     },
     {
       id: "eggs",
@@ -35,6 +37,9 @@ export const SAMPLE_BASKET_DRAFT: BasketDraft = {
         "kedai-hijau": "7.00",
         "pasar-jimat": "6.50",
         "mart-setia": "",
+      },
+      unavailableByStoreId: {
+        "mart-setia": true,
       },
     },
     {
@@ -46,6 +51,7 @@ export const SAMPLE_BASKET_DRAFT: BasketDraft = {
         "pasar-jimat": "6.95",
         "mart-setia": "7.30",
       },
+      unavailableByStoreId: {},
     },
   ],
   tripCosts: [
