@@ -13,6 +13,7 @@ const draft: BasketDraft = {
       name: "Rice",
       quantityInput: "2",
       priceInputsByStoreId: { a: "18.90", b: "" },
+      unavailableByStoreId: { b: true },
     },
   ],
   tripCosts: [
@@ -51,5 +52,21 @@ describe("basic basket draft conversion", () => {
 
     expect(result.ok).toBe(false);
     expect(result.errors.quantities.rice).toMatch(/whole number/i);
+  });
+
+  it("rejects blank prices that are not marked Unavailable", () => {
+    const result = toBasketInput({
+      ...draft,
+      items: [
+        {
+          ...draft.items[0],
+          unavailableByStoreId: {},
+          priceInputsByStoreId: { a: "18.90", b: "" },
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.prices.rice.b).toMatch(/mark Unavailable/i);
   });
 });
