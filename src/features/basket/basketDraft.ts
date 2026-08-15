@@ -15,6 +15,8 @@ export interface EditableBasketItem {
   name: string;
   quantityInput: string;
   priceInputsByStoreId: Record<string, string>;
+  /** Explicit per-shop Unavailable marks. Missing/false = price expected or entered. */
+  unavailableByStoreId: Record<string, boolean>;
 }
 
 export interface EditableTripCost {
@@ -153,9 +155,21 @@ export function toBasketInput(draft: BasketDraft): BasketDraftResult {
     let hasEnteredPrice = false;
     let hasValidPrice = false;
     for (const shop of draft.shops) {
+      const markedUnavailable = Boolean(item.unavailableByStoreId?.[shop.id]);
       const rawPrice = item.priceInputsByStoreId[shop.id] ?? "";
       pricesByStoreId[shop.id] = null;
-      if (!rawPrice.trim()) continue;
+
+      if (markedUnavailable) {
+        continue;
+      }
+
+      if (!rawPrice.trim()) {
+        errors.prices[item.id] ??= {};
+        errors.prices[item.id][shop.id] =
+          "Enter a price or mark Unavailable.";
+        continue;
+      }
+
       hasEnteredPrice = true;
       const parsed = parseRmInput(rawPrice);
       if (!parsed.ok) {
@@ -173,7 +187,8 @@ export function toBasketInput(draft: BasketDraft): BasketDraftResult {
       hasValidPrice = true;
     }
     if (draft.shops.length > 0 && !hasEnteredPrice) {
-      errors.availability[item.id] = "Enter a price at one or more shops.";
+      errors.availability[item.id] =
+        "Enter a price at one or more shops, or mark others Unavailable.";
     } else if (hasEnteredPrice && !hasValidPrice) {
       errors.availability[item.id] = "Correct at least one price for this item.";
     }
