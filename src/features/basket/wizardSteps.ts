@@ -1,3 +1,8 @@
+import {
+  parseRmInput,
+  validateItemPriceCents,
+  validateTripCostCents,
+} from "../../domain";
 import type { BasketDraft, BasketDraftErrors } from "./basketDraft";
 
 export const WIZARD_STEPS = [
@@ -35,7 +40,10 @@ export function canAdvanceFromTrips(draftResultOk: boolean): boolean {
 }
 
 export interface ItemPriceStatus {
+  /** Shop-price cells with a valid amount. */
   priced: number;
+  /** Non-empty price cells that fail parse or range checks. */
+  invalid: number;
   /** Items with no priced shop yet. */
   missing: number;
   unavailable: number;
@@ -44,9 +52,22 @@ export interface ItemPriceStatus {
   openSlots: number;
 }
 
-/** Counts priced slots, unavailable slots, and items still needing any price. */
+function isValidItemPrice(raw: string): boolean {
+  const parsed = parseRmInput(raw);
+  if (!parsed.ok) return false;
+  return validateItemPriceCents(parsed.cents).ok;
+}
+
+function isValidTripCost(raw: string): boolean {
+  const parsed = parseRmInput(raw);
+  if (!parsed.ok) return false;
+  return validateTripCostCents(parsed.cents).ok;
+}
+
+/** Counts valid prices, invalid entries, unavailable slots, and items still needing any price. */
 export function summarizeItemPrices(draft: BasketDraft): ItemPriceStatus {
   let priced = 0;
+  let invalid = 0;
   let unavailable = 0;
   let openSlots = 0;
   const totalSlots = draft.items.length * draft.shops.length;
@@ -61,9 +82,11 @@ export function summarizeItemPrices(draft: BasketDraft): ItemPriceStatus {
         unavailable += 1;
       } else if (!raw.trim()) {
         openSlots += 1;
-      } else {
+      } else if (isValidItemPrice(raw)) {
         priced += 1;
         itemPriced += 1;
+      } else {
+        invalid += 1;
       }
     }
     if (draft.shops.length > 0 && itemPriced === 0) itemsNeedingPrice += 1;
@@ -71,6 +94,7 @@ export function summarizeItemPrices(draft: BasketDraft): ItemPriceStatus {
 
   return {
     priced,
+    invalid,
     missing: itemsNeedingPrice,
     unavailable,
     totalSlots,
@@ -111,6 +135,10 @@ export function formatItemsStatusHint(
     }
   }
 
+  if (status.invalid > 0) {
+    return `${status.priced} of ${status.totalSlots} prices entered · ${status.invalid} need fixing.`;
+  }
+
   if (status.missing > 0) {
     return `${status.missing} item${status.missing === 1 ? "" : "s"} need at least one shop price · ${status.priced} entered · ${status.unavailable} unavailable.`;
   }
@@ -128,19 +156,19 @@ export interface TripCostStatus {
   invalid: number;
 }
 
-export function summarizeTripCosts(
-  draft: BasketDraft,
-  errors: BasketDraftErrors,
-): TripCostStatus {
+export function summarizeTripCosts(draft: BasketDraft): TripCostStatus {
   const total = draft.tripCosts.length;
   let entered = 0;
+  let invalid = 0;
   for (const trip of draft.tripCosts) {
-    if (trip.costInput.trim()) entered += 1;
+    if (!trip.costInput.trim()) continue;
+    if (isValidTripCost(trip.costInput)) entered += 1;
+    else invalid += 1;
   }
   return {
     total,
     entered,
-    invalid: Object.keys(errors.tripCosts).length,
+    invalid,
   };
 }
 
@@ -152,14 +180,19 @@ export function formatTripsStatusHint(
 ): string {
   if (draft.shops.length === 0) return "Add shops before entering trip costs.";
 
-  const status = summarizeTripCosts(draft, errors);
+  const status = summarizeTripCosts(draft);
 
   if (draftResultOk) {
     return `All ${status.total} trip cost${status.total === 1 ? "" : "s"} entered.`;
   }
 
-  if (status.invalid > 0 && stepAttempted) {
-    return `Fix ${status.invalid} trip cost${status.invalid === 1 ? "" : "s"} before comparing.`;
+  if (status.invalid > 0) {
+    return `${status.entered} of ${status.total} trip costs entered · ${status.invalid} need fixing.`;
+  }
+
+  if (stepAttempted && Object.keys(errors.tripCosts).length > 0) {
+    const count = Object.keys(errors.tripCosts).length;
+    return `Fix ${count} trip cost${count === 1 ? "" : "s"} before comparing.`;
   }
 
   const remaining = status.total - status.entered;
@@ -173,4 +206,3 @@ export function formatTripsStatusHint(
 
   return `${status.entered} of ${status.total} trip costs entered.`;
 }
-

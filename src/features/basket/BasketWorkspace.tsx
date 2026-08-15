@@ -197,6 +197,7 @@ export function BasketWorkspace() {
   } | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   const [revealRequest, setRevealRequest] = useState(0);
+  const [touchedFields, setTouchedFields] = useState(() => new Set<string>());
   const [step, setStep] = useState<WizardStepIndex>(initial.step);
   const [stepDirection, setStepDirection] = useState(1);
   const formRef = useRef<HTMLFormElement>(null);
@@ -214,6 +215,20 @@ export function BasketWorkspace() {
     setStepDirection(next > step ? 1 : -1);
     setStep(next);
     setStepAttempted(false);
+    setTouchedFields(new Set());
+  }
+
+  function markFieldTouched(fieldId: string) {
+    setTouchedFields((current) => {
+      if (current.has(fieldId)) return current;
+      const next = new Set(current);
+      next.add(fieldId);
+      return next;
+    });
+  }
+
+  function shouldShowFieldError(fieldId: string): boolean {
+    return stepAttempted || comparisonAttempted || touchedFields.has(fieldId);
   }
 
   useEffect(() => {
@@ -470,6 +485,7 @@ export function BasketWorkspace() {
       empty ? createSampleBasketDraft() : structuredClone(EMPTY_BASKET_DRAFT),
     );
     setComparisonAttempted(false);
+    setTouchedFields(new Set());
     setShowResetConfirmation(false);
     setNotice(empty ? "Example basket loaded." : undefined);
     goToStep(1);
@@ -671,7 +687,8 @@ export function BasketWorkspace() {
               <ShopEditor
                 shops={draft.shops}
                 errors={draftResult.errors.shopNames}
-                showErrors={showStepErrors}
+                shouldShowFieldError={shouldShowFieldError}
+                onFieldTouched={markFieldTouched}
                 onAdd={addShop}
                 onNameChange={updateShopName}
                 onRemove={removeShop}
@@ -724,7 +741,9 @@ export function BasketWorkspace() {
                 items={draft.items}
                 shops={draft.shops}
                 errors={draftResult.errors}
-                showErrors={showStepErrors}
+                showAllErrors={showStepErrors}
+                shouldShowFieldError={shouldShowFieldError}
+                onFieldTouched={markFieldTouched}
                 onAdd={addItem}
                 onRemove={(itemId) =>
                   updateDraft((current) => ({
@@ -779,7 +798,8 @@ export function BasketWorkspace() {
                 shops={draft.shops}
                 tripCosts={draft.tripCosts}
                 errors={draftResult.errors.tripCosts}
-                showErrors={showStepErrors}
+                shouldShowFieldError={shouldShowFieldError}
+                onFieldTouched={markFieldTouched}
                 onChange={updateTripCost}
                 onBlur={normalizeTripCost}
               />

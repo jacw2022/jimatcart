@@ -1,10 +1,12 @@
+import { formatRm, TRIP_COST_RANGE } from "../../domain";
 import type { EditableShop, EditableTripCost } from "./basketDraft";
 
 interface TripCostEditorProps {
   shops: EditableShop[];
   tripCosts: EditableTripCost[];
   errors: Record<number, string>;
-  showErrors: boolean;
+  shouldShowFieldError: (fieldId: string) => boolean;
+  onFieldTouched: (fieldId: string) => void;
   onChange: (index: number, value: string) => void;
   onBlur: (index: number) => void;
 }
@@ -22,7 +24,8 @@ export function TripCostEditor({
   shops,
   tripCosts,
   errors,
-  showErrors,
+  shouldShowFieldError,
+  onFieldTouched,
   onChange,
   onBlur,
 }: TripCostEditorProps) {
@@ -38,7 +41,8 @@ export function TripCostEditor({
 
   function renderField(trip: EditableTripCost, index: number, paired: boolean) {
     const route = formatRoute(shops, trip.storeIds);
-    const error = showErrors ? errors[index] : undefined;
+    const fieldId = `trip-cost-${index}`;
+    const error = shouldShowFieldError(fieldId) ? errors[index] : undefined;
     const errorId = `trip-cost-${index}-error`;
     return (
       <div className="trip-cost__row" key={trip.storeIds.join(":")}>
@@ -55,7 +59,7 @@ export function TripCostEditor({
           <span className="money-input money-input--trip">
             <span aria-hidden="true">RM</span>
             <input
-              id={`trip-cost-${index}`}
+              id={fieldId}
               type="text"
               inputMode="decimal"
               value={trip.costInput}
@@ -64,7 +68,10 @@ export function TripCostEditor({
               aria-invalid={Boolean(error)}
               aria-describedby={error ? errorId : "trip-cost-help"}
               onChange={(event) => onChange(index, event.target.value)}
-              onBlur={() => onBlur(index)}
+              onBlur={() => {
+                onFieldTouched(fieldId);
+                onBlur(index);
+              }}
             />
           </span>
           {error && (
@@ -84,6 +91,8 @@ export function TripCostEditor({
         <p id="trip-cost-help">
           Estimate Grab, petrol, tolls or parking for each shopping plan. Use
           what you would actually spend for that run — not a per-km formula.
+          Allowed range {formatRm(TRIP_COST_RANGE.minCents)}–
+          {formatRm(TRIP_COST_RANGE.maxCents)}.
         </p>
       </div>
 

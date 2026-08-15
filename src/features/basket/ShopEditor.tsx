@@ -3,7 +3,8 @@ import type { EditableShop } from "./basketDraft";
 interface ShopEditorProps {
   shops: EditableShop[];
   errors: Record<string, string>;
-  showErrors: boolean;
+  shouldShowFieldError: (fieldId: string) => boolean;
+  onFieldTouched: (fieldId: string) => void;
   onAdd: () => void;
   onNameChange: (shopId: string, name: string) => void;
   onRemove: (shopId: string) => void;
@@ -12,7 +13,8 @@ interface ShopEditorProps {
 export function ShopEditor({
   shops,
   errors,
-  showErrors,
+  shouldShowFieldError,
+  onFieldTouched,
   onAdd,
   onNameChange,
   onRemove,
@@ -49,14 +51,17 @@ export function ShopEditor({
       ) : (
         <div className="shop-list">
           {shops.map((shop, index) => {
-            const error = showErrors ? errors[shop.id] : undefined;
+            const nameId = `${shop.id}-name`;
+            const error = shouldShowFieldError(nameId)
+              ? errors[shop.id]
+              : undefined;
             const errorId = `${shop.id}-name-error`;
             return (
               <div className="shop-card" key={shop.id}>
-                <label className="field-group" htmlFor={`${shop.id}-name`}>
+                <label className="field-group" htmlFor={nameId}>
                   <span className="field-label">Shop {index + 1} name</span>
                   <input
-                    id={`${shop.id}-name`}
+                    id={nameId}
                     type="text"
                     value={shop.name}
                     placeholder="e.g. Lotus's"
@@ -66,6 +71,7 @@ export function ShopEditor({
                     onChange={(event) =>
                       onNameChange(shop.id, event.target.value)
                     }
+                    onBlur={() => onFieldTouched(nameId)}
                   />
                   {error && (
                     <span className="field-error" id={errorId}>
