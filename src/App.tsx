@@ -6,9 +6,14 @@ export function App() {
       <header className="site-header site-header--slim">
         <div className="site-header__content">
           <a className="brand" href="#main-content" aria-label="JimatCart home">
-            <span className="brand__mark" aria-hidden="true">
-              JC
-            </span>
+            <img
+              className="brand__mark"
+              src="/jimatcart-mark.png"
+              alt=""
+              width={40}
+              height={40}
+              decoding="async"
+            />
             <span>JimatCart</span>
           </a>
         </div>
