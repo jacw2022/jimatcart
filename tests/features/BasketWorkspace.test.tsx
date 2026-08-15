@@ -64,8 +64,11 @@ describe("BasketWorkspace", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Next: Trip costs" }));
     expect(
-      screen.getByText(/Enter a price at one or more shops/i),
-    ).toBeInTheDocument();
+      screen.getByRole("alert"),
+    ).toHaveTextContent(/Enter a price at one or more shops/i);
+    expect(
+      document.querySelectorAll('input[aria-invalid="true"]:not([aria-describedby])'),
+    ).toHaveLength(0);
     await waitFor(() => {
       const invalid = document.querySelector<HTMLElement>('[aria-invalid="true"]');
       expect(invalid).not.toBeNull();
