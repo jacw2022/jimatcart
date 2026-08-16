@@ -62,12 +62,12 @@ function createId(prefix: "shop" | "item"): string {
 function getInitialWorkspace(): InitialWorkspace {
   const saved = loadWorkspace();
   if (saved.status === "restored") {
-    const draftResult = toBasketInput(saved.draft);
-    const landOnResults = saved.hasCompared && draftResult.ok;
+    // Always open on Welcome after refresh. Basket data (and a prior comparison
+    // flag) still restore from localStorage so Edit / step navigation can reuse them.
     return {
       draft: saved.draft,
-      hasCompared: landOnResults,
-      step: landOnResults ? 4 : 0,
+      hasCompared: saved.hasCompared && toBasketInput(saved.draft).ok,
+      step: 0,
     };
   }
   return {
