@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BasketWorkspace } from "../../src/features/basket/BasketWorkspace";
+import { createSampleBasketDraft } from "../../src/features/basket/sampleBasket";
 import { GO_WELCOME_EVENT } from "../../src/features/basket/wizardEvents";
 import { BASKET_STORAGE_KEY } from "../../src/storage/basketStorage";
 
@@ -175,6 +176,19 @@ describe("BasketWorkspace", () => {
     expect(within(dialog).getByText(/trip cost/i)).toBeInTheDocument();
     expect(within(dialog).getByText(/discards/i)).toBeInTheDocument();
     expect(within(dialog).queryByText(/\d+ prices?/i)).not.toBeInTheDocument();
+  });
+
+  it("opens on Welcome after a refresh even when a comparison was saved", () => {
+    const draft = createSampleBasketDraft();
+    localStorage.setItem(
+      BASKET_STORAGE_KEY,
+      JSON.stringify({ version: 4, draft, hasCompared: true }),
+    );
+    render(<BasketWorkspace />);
+    expect(
+      screen.getByRole("heading", { name: "Make every ringgit count." }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("What to buy where")).not.toBeInTheDocument();
   });
 
   it("returns to welcome from the brand control", () => {
